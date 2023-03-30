@@ -6,7 +6,6 @@
 
 #include "platform.h"
 #include <glad/glad.h>
-#include "buffers.h"
 
 typedef glm::vec2  vec2;
 typedef glm::vec3  vec3;
@@ -14,6 +13,38 @@ typedef glm::vec4  vec4;
 typedef glm::ivec2 ivec2;
 typedef glm::ivec3 ivec3;
 typedef glm::ivec4 ivec4;
+
+struct VertexBufferAttribute
+{
+    u8 location;
+    u8 componentCount;
+    u8 offset;
+};
+
+struct VertexBufferLayout
+{
+    std::vector<VertexBufferAttribute> attributes;
+    u8                                 stride;
+};
+
+struct VertexShaderAttribute
+{
+    VertexShaderAttribute(u8 loc, u8 count) { location = loc, componentCount = count; }
+
+    u8 location;
+    u8 componentCount;
+};
+
+struct VertexShaderLayout
+{
+    std::vector<VertexShaderAttribute> attributes;
+};
+
+struct Vao 
+{
+    GLuint handle;
+    GLuint programHandle;
+};
 
 struct Image
 {
@@ -29,18 +60,59 @@ struct Texture
     std::string filepath;
 };
 
+struct Material
+{
+    std::string name;
+    vec3        albedo;
+    vec3        emissive;
+    f32         smoothness;
+    u32         albedoTextureIdx;
+    u32         emissiveTextureIdx;
+    u32         specularTextureIdx;
+    u32         normalsTextureIdx;
+    u32         bumpTextureIdx;
+};
+
+struct Submesh
+{
+    VertexBufferLayout vertexBufferLayout;
+    std::vector<float> vertices;
+    std::vector<u32>   indices;
+    u32                vertexOffset;
+    u32                indexOffset;
+
+    std::vector<Vao>   vaos;
+};
+
+struct Mesh
+{
+    std::vector<Submesh> submeshes;
+    GLuint               vertexBufferHandle;
+    GLuint               indexBufferHandle;
+};
+
+struct Model
+{
+    u32              meshIdx;
+    std::vector<u32> materialIdx;
+};
+
 struct Program
 {
     GLuint             handle;
     std::string        filepath;
     std::string        programName;
+    VertexShaderLayout vertexInputLayout;
+
     u64                lastWriteTimestamp; // What is this for?
 };
 
 enum Mode
 {
-    Mode_TexturedQuad,
-    Mode_Count
+    Mode_TexturedQuad,  // To render UI (maybe)
+    Mode_Mesh,          // To render meshes
+
+    Mode_Count          // Number of Modes [MAX_MODE]
 };
 
 struct OpenGLInfo
@@ -86,6 +158,9 @@ struct App
     ivec2 displaySize;
 
     std::vector<Texture>  textures;
+    std::vector<Material> materials;
+    std::vector<Mesh>     meshes;
+    std::vector<Model>    models;
     std::vector<Program>  programs;
 
     // program indices
@@ -123,4 +198,10 @@ void Gui(App* app);
 void Update(App* app);
 
 void Render(App* app);
+
+u32 LoadTexture2D(App* app, const char* filepath);
+
+GLuint FindVAO(Mesh& mesh, u32 submeshIndex, const Program& program);
+
+u8 GetComponentCount(const GLenum& type);
 

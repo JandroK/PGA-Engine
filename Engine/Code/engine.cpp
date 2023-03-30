@@ -1,4 +1,4 @@
-//
+ï»¿//
 // engine.cpp : Put all your graphics stuff in this file. This is kind of the graphics module.
 // In here, you should type all your OpenGL commands, and you can also type code to handle
 // input platform events (e.g to move the camera or react to certain shortcuts), writing some
@@ -180,13 +180,7 @@ u32 LoadTexture2D(App* app, const char* filepath)
 
 void Init(App* app)
 {
-	// TODO: Initialize your resources here!
-	// - vertex buffers
-	// - element/index buffers
-	// - vaos
-	// - programs (and retrieve uniform indices)
-	// - textures
-	// Prepare vertex buffer
+	// Initialize the resources
 	glGenBuffers(1, &app->embeddedVertices);
 	glBindBuffer(GL_ARRAY_BUFFER, app->embeddedVertices);
 	glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
@@ -212,9 +206,7 @@ void Init(App* app)
 	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, app->embeddedElements);
 	glBindVertexArray(0);
 
-	app->texturedGeometryProgramIdx = LoadProgram(app, "shaders.glsl", "TEXTURED_GEOMETRY");
-	Program& texturedGeometryProgram = app->programs[app->texturedGeometryProgramIdx];
-	app->programUniformTexture = glGetUniformLocation(texturedGeometryProgram.handle, "uTexture");
+	//////////////////////////////////
 
 	app->diceTexIdx = LoadTexture2D(app, "dice.png");
 	app->whiteTexIdx = LoadTexture2D(app, "color_white.png");
@@ -234,7 +226,36 @@ void Init(App* app)
 		app->glInfo.glExtensions.push_back(reinterpret_cast<const char*>(glGetStringi(GL_EXTENSIONS, GLuint(i))));
 	}
 
-	app->mode = Mode_TexturedQuad;
+	//////////////////////////////////
+
+	app->texturedGeometryProgramIdx = LoadProgram(app, "shaders.glsl", "SHOW_TEXTURED_MESH");
+	Program& texturedGeometryProgram = app->programs[app->texturedGeometryProgramIdx];
+	GLint attributeCount;
+	glGetProgramiv(texturedGeometryProgram.handle, GL_ACTIVE_ATTRIBUTES, &attributeCount);
+
+	for (GLint i = 0; i < attributeCount; ++i)
+	{
+		GLchar attributeName[32];
+		GLsizei attributeNameLength;
+		GLint attributeSize;
+		GLenum attributeType;
+
+		glGetActiveAttrib(texturedGeometryProgram.handle, i,
+			ARRAY_COUNT(attributeName),
+			&attributeNameLength,
+			&attributeSize,
+			&attributeType,
+			attributeName);
+
+		GLint attributeLocation = glGetAttribLocation(texturedGeometryProgram.handle, attributeName);
+		VertexShaderAttribute attribute = VertexShaderAttribute(attributeLocation,GetComponentCount(attributeType));
+		texturedGeometryProgram.vertexInputLayout.attributes.push_back(attribute);
+		
+	}
+
+	app->programUniformTexture = glGetUniformLocation(texturedGeometryProgram.handle, "uTexture");
+
+	app->mode = Mode_Mesh;
 }
 
 void Gui(App* app)
@@ -274,36 +295,28 @@ void Update(App* app)
 
 void Render(App* app)
 {
+	// Clean screen
+	glClearColor(0.1, 0.1, 0.1, 1.0);
+	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+	// Indicate to OpneGL the screen size in the current frame
+	glViewport(0, 0, app->displaySize.x, app->displaySize.y);
+
 	switch (app->mode)
 	{
 	case Mode_TexturedQuad:
 	{
-		// TODO: Draw your textured quad here!
-		// - clear the framebuffer
-		// - set the viewport
-		// - set the blending state
-		// - bind the texture into unit 0
-		// - bind the program 
-		//   (...and make its texture sample from unit 0)
-		// - bind the vao
-		// - glDrawElements() !!!
-
-		// Limpiamos la pantalla a gris
-		glClearColor(0.1,0.1,0.1, 1.0);
-		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-		// Le indicamos cual es el tamaño de la pantalla en este momento
-		glViewport(0, 0, app->displaySize.x, app->displaySize.y);
-		// Le indicamos que shader(programa) vamos a utilizar)
+		// Indicate which shader we are going to use
 		Program& programTexturedGeometry = app->programs[app->texturedGeometryProgramIdx];
 		glUseProgram(programTexturedGeometry.handle);
 		glBindVertexArray(app->vao);
-		// Activamoe el alpha
+
 		glEnable(GL_BLEND);
 		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
-		// Utilizamos 1i porque le pasamos 1 int, si la pasaramos un vector3 de floats utilizariamos glUniform3f
+		// Use 1i because we pass it 1 int, if we pass it a vector3 of floats we would use glUniform3f
 		glUniform1i(app->programUniformTexture, 0); // ID = 0
-		glActiveTexture(GL_TEXTURE0);				// El número del final de GL_TEXTURE debe coincidir con el número de arriba que es 0
+		glActiveTexture(GL_TEXTURE0);				// The last number of GL_TEXTURE must match the above number which is 0
 		GLuint textureHandle = app->textures[app->diceTexIdx].handle;
 		glBindTexture(GL_TEXTURE_2D, textureHandle);
 
@@ -312,10 +325,131 @@ void Render(App* app)
 
 		glBindVertexArray(0);
 		glUseProgram(0);
-	}
-	break;
 
-	default:;
+		break;
+	}
+	case Mode_Mesh:
+	{
+		// Indicate which shader we are going to use
+		Program& programTexturedGeometry = app->programs[app->texturedGeometryProgramIdx];
+		glUseProgram(programTexturedGeometry.handle);
+
+		Model& model = app->models[app->mode];
+		Mesh& mesh = app->meshes[model.meshIdx];
+
+		for (u32 i = 0; i < mesh.submeshes.size(); ++i)
+		{
+			GLuint vao = FindVAO(mesh, i, programTexturedGeometry);
+			glBindVertexArray(vao);
+			u32 submeshMaterialIdx = model.materialIdx[i];
+			Material& submeshMaterial = app->materials[submeshMaterialIdx];
+
+			glActiveTexture(GL_TEXTURE0);
+			GLuint textureHandle = app->textures[submeshMaterial.albedoTextureIdx].handle;
+			glBindTexture(GL_TEXTURE_2D, textureHandle);
+			glUniform1i(app->programUniformTexture, 0);
+
+			Submesh& submesh = mesh.submeshes[i];
+			glDrawElements(GL_TRIANGLES, submesh.indices.size(), GL_UNSIGNED_INT, (void*)(u64)submesh.indexOffset);
+		}
+
+		glBindVertexArray(0);
+		glUseProgram(0);
+		break;
+	}
+	default:
+		break;
 	}
 }
 
+GLuint FindVAO(Mesh& mesh, u32 submeshIndex, const Program& program)
+{
+	Submesh& submesh = mesh.submeshes[submeshIndex];
+
+	// Try finding a vao for this submesh/program
+	for (u32 i = 0; i < (u32)submesh.vaos.size(); ++i)
+	{
+		if (submesh.vaos[i].programHandle == program.handle)
+			return submesh.vaos[i].handle;
+	}
+	// If don't find the vao, create a new vao for this submesh/program
+	GLuint vaoHandle = 0;
+	glGenVertexArrays(1, &vaoHandle);
+	glBindVertexArray(vaoHandle);
+
+	glBindBuffer(GL_ARRAY_BUFFER, mesh.vertexBufferHandle);
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, mesh.indexBufferHandle);
+
+	// We have to link all vertex inputs attributes to attributrs in the vertex buffer
+	for (u32 i = 0; i < program.vertexInputLayout.attributes.size(); ++i)
+	{
+		bool attributeWasLinked = false;
+		for (u32 j = 0; j < submesh.vertexBufferLayout.attributes.size(); ++j)
+		{
+			if (program.vertexInputLayout.attributes[j].location == submesh.vertexBufferLayout.attributes[j].location)
+			{
+				const u32 index = submesh.vertexBufferLayout.attributes[j].location;
+				const u32 ncomp = submesh.vertexBufferLayout.attributes[j].componentCount;
+				const u32 offset = submesh.vertexBufferLayout.attributes[j].offset + submesh.vertexOffset;
+				const u32 stride = submesh.vertexBufferLayout.stride;
+
+				glVertexAttribPointer(index, ncomp, GL_FLOAT, GL_FALSE, stride, (void*)(u64)offset);
+				glEnableVertexAttribArray(index);
+
+				attributeWasLinked = true;
+				break;
+			}
+		}
+
+		assert(attributeWasLinked);
+	}
+
+	glBindVertexArray(0);
+	// Store it in the list of vaos for this submesh
+	Vao vao = { vaoHandle, program.handle };
+	submesh.vaos.push_back(vao);
+
+	return vaoHandle;
+}
+
+u8 GetComponentCount(const GLenum& type)
+{
+	switch (type)
+	{
+	case GL_FLOAT:				return 1;
+	case GL_FLOAT_VEC2:			return 2;
+	case GL_FLOAT_VEC3:			return 3;
+	case GL_FLOAT_VEC4:			return 4;
+	case GL_FLOAT_MAT2:			return 4;
+	case GL_FLOAT_MAT3:			return 9;
+	case GL_FLOAT_MAT4:			return 16;
+	case GL_FLOAT_MAT2x3:		return 6;
+	case GL_FLOAT_MAT2x4:		return 8;
+	case GL_FLOAT_MAT3x2:		return 6;
+	case GL_FLOAT_MAT3x4:		return 12;
+	case GL_FLOAT_MAT4x2:		return 8;
+	case GL_FLOAT_MAT4x3:		return 12;
+	case GL_INT:				return 1;
+	case GL_INT_VEC2:			return 2;
+	case GL_INT_VEC3:			return 3;
+	case GL_INT_VEC4:			return 4;
+	case GL_UNSIGNED_INT:		return 1;
+	case GL_UNSIGNED_INT_VEC2:	return 2;
+	case GL_UNSIGNED_INT_VEC3:	return 3;
+	case GL_UNSIGNED_INT_VEC4:	return 4;
+	case GL_DOUBLE:				return 1;
+	case GL_DOUBLE_VEC2:		return 2;
+	case GL_DOUBLE_VEC3:		return 3;
+	case GL_DOUBLE_VEC4:		return 4;
+	case GL_DOUBLE_MAT2:		return 4;
+	case GL_DOUBLE_MAT3:		return 9;
+	case GL_DOUBLE_MAT4:		return 16;
+	case GL_DOUBLE_MAT2x3:		return 6;
+	case GL_DOUBLE_MAT2x4:		return 8;
+	case GL_DOUBLE_MAT3x2:		return 6;
+	case GL_DOUBLE_MAT3x4:		return 12;
+	case GL_DOUBLE_MAT4x2:		return 8;
+	case GL_DOUBLE_MAT4x3:		return 12;
+	default: return 0;
+	}
+}
