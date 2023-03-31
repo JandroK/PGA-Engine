@@ -10,6 +10,8 @@
 #include <stb_image.h>
 #include <stb_image_write.h>
 
+#include "assimp_model_loading.h"
+
 GLuint CreateProgramFromSource(String programSource, const char* shaderName)
 {
 	GLchar  infoLogBuffer[1024] = {};
@@ -56,6 +58,7 @@ GLuint CreateProgramFromSource(String programSource, const char* shaderName)
 	{
 		glGetShaderInfoLog(vshader, infoLogBufferSize, &infoLogSize, infoLogBuffer);
 		ELOG("glCompileShader() failed with vertex shader %s\nReported message:\n%s\n", shaderName, infoLogBuffer);
+		assert(success);
 	}
 
 	GLuint fshader = glCreateShader(GL_FRAGMENT_SHADER);
@@ -66,6 +69,7 @@ GLuint CreateProgramFromSource(String programSource, const char* shaderName)
 	{
 		glGetShaderInfoLog(fshader, infoLogBufferSize, &infoLogSize, infoLogBuffer);
 		ELOG("glCompileShader() failed with fragment shader %s\nReported message:\n%s\n", shaderName, infoLogBuffer);
+		assert(success);
 	}
 
 	GLuint programHandle = glCreateProgram();
@@ -228,17 +232,18 @@ void Init(App* app)
 
 	//////////////////////////////////
 
+	LoadModel(app, "Backpack/backpack.obj");
 	app->texturedGeometryProgramIdx = LoadProgram(app, "shaders.glsl", "SHOW_TEXTURED_MESH");
 	Program& texturedGeometryProgram = app->programs[app->texturedGeometryProgramIdx];
-	GLint attributeCount;
+	/*GLint attributeCount;
 	glGetProgramiv(texturedGeometryProgram.handle, GL_ACTIVE_ATTRIBUTES, &attributeCount);
 
 	for (GLint i = 0; i < attributeCount; ++i)
 	{
-		GLchar attributeName[32];
+		GLchar  attributeName[32];
 		GLsizei attributeNameLength;
-		GLint attributeSize;
-		GLenum attributeType;
+		GLint   attributeSize;
+		GLenum  attributeType;
 
 		glGetActiveAttrib(texturedGeometryProgram.handle, i,
 			ARRAY_COUNT(attributeName),
@@ -250,8 +255,9 @@ void Init(App* app)
 		GLint attributeLocation = glGetAttribLocation(texturedGeometryProgram.handle, attributeName);
 		VertexShaderAttribute attribute = VertexShaderAttribute(attributeLocation,GetComponentCount(attributeType));
 		texturedGeometryProgram.vertexInputLayout.attributes.push_back(attribute);
-		
-	}
+	}*/
+	texturedGeometryProgram.vertexInputLayout.attributes.push_back(VertexShaderAttribute(0,3));
+	texturedGeometryProgram.vertexInputLayout.attributes.push_back(VertexShaderAttribute(2,2));
 
 	app->programUniformTexture = glGetUniformLocation(texturedGeometryProgram.handle, "uTexture");
 
@@ -299,6 +305,8 @@ void Render(App* app)
 	glClearColor(0.1, 0.1, 0.1, 1.0);
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
+	glEnable(GL_DEPTH_TEST);
+
 	// Indicate to OpneGL the screen size in the current frame
 	glViewport(0, 0, app->displaySize.x, app->displaySize.y);
 
@@ -334,7 +342,8 @@ void Render(App* app)
 		Program& programTexturedGeometry = app->programs[app->texturedGeometryProgramIdx];
 		glUseProgram(programTexturedGeometry.handle);
 
-		Model& model = app->models[app->mode];
+		// TODO: Change index 0 by for of entities
+		Model& model = app->models[0];
 		Mesh& mesh = app->meshes[model.meshIdx];
 
 		for (u32 i = 0; i < mesh.submeshes.size(); ++i)
@@ -351,9 +360,10 @@ void Render(App* app)
 
 			Submesh& submesh = mesh.submeshes[i];
 			glDrawElements(GL_TRIANGLES, submesh.indices.size(), GL_UNSIGNED_INT, (void*)(u64)submesh.indexOffset);
+
+			glBindVertexArray(0);
 		}
 
-		glBindVertexArray(0);
 		glUseProgram(0);
 		break;
 	}
