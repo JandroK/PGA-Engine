@@ -232,10 +232,11 @@ void Init(App* app)
 
 	//////////////////////////////////
 
-	LoadModel(app, "Backpack/backpack.obj");
+	LoadModel(app, "Patrick/patrick.obj"); // "Backpack/backpack.obj"
 	app->texturedGeometryProgramIdx = LoadProgram(app, "shaders.glsl", "SHOW_TEXTURED_MESH");
 	Program& texturedGeometryProgram = app->programs[app->texturedGeometryProgramIdx];
-	/*GLint attributeCount;
+	
+	GLint attributeCount;
 	glGetProgramiv(texturedGeometryProgram.handle, GL_ACTIVE_ATTRIBUTES, &attributeCount);
 
 	for (GLint i = 0; i < attributeCount; ++i)
@@ -255,9 +256,7 @@ void Init(App* app)
 		GLint attributeLocation = glGetAttribLocation(texturedGeometryProgram.handle, attributeName);
 		VertexShaderAttribute attribute = VertexShaderAttribute(attributeLocation,GetComponentCount(attributeType));
 		texturedGeometryProgram.vertexInputLayout.attributes.push_back(attribute);
-	}*/
-	texturedGeometryProgram.vertexInputLayout.attributes.push_back(VertexShaderAttribute(0,3));
-	texturedGeometryProgram.vertexInputLayout.attributes.push_back(VertexShaderAttribute(2,2));
+	}
 
 	app->programUniformTexture = glGetUniformLocation(texturedGeometryProgram.handle, "uTexture");
 
@@ -396,7 +395,7 @@ GLuint FindVAO(Mesh& mesh, u32 submeshIndex, const Program& program)
 		bool attributeWasLinked = false;
 		for (u32 j = 0; j < submesh.vertexBufferLayout.attributes.size(); ++j)
 		{
-			if (program.vertexInputLayout.attributes[j].location == submesh.vertexBufferLayout.attributes[j].location)
+			if (program.vertexInputLayout.attributes[i].location == submesh.vertexBufferLayout.attributes[j].location)
 			{
 				const u32 index = submesh.vertexBufferLayout.attributes[j].location;
 				const u32 ncomp = submesh.vertexBufferLayout.attributes[j].componentCount;
