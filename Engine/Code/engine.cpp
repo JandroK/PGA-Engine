@@ -244,21 +244,29 @@ void Init(App* app)
 	InicializeGLInfo(app);
 
 	//////////////////////////////////
-	
+
 	// Init Camera
 	InitCamera(app);
 
 	// Crating uniform buffers
-	app->bufferHandle = CreateUniformBuffers();
+	CreateUniformBuffers(app);
 
-	// Set position and scale of entity
-	app->entity.world = TransformConstructor(vec3(4.0f, 0.0f, 0.0f), vec3(0.0f, -90.0f, 0.0f));
-	app->entity.worldViewProjection = app->camera.projection * app->camera.view * app->entity.world;
+	u32 modelIndex = LoadModel(app, "Patrick/patrick.obj"); // "Backpack/backpack.obj"
 
-	LoadModel(app, "Patrick/patrick.obj"); // "Backpack/backpack.obj"
+	// Fill entities array
+	for (size_t i = 0; i < 3; ++i)
+	{
+		Entity e;
+		vec3 pos = glm::rotate(glm::radians(360.0f / 3.0f * i), vec3(0.0f, 1.0f, 0.0f)) * vec4(vec3(4.0f, 0.0f, 0.0f), 1.0f);
+		e.worldMatrix = TransformConstructor(pos, vec3(0.0f, -90.0f, 0.0f));
+		e.modelIndex = modelIndex;
+
+		app->entities.push_back(e);
+	}
+
 	app->texturedGeometryProgramIdx = LoadProgram(app, "shaders.glsl", "SHOW_TEXTURED_MESH");
 	Program& texturedGeometryProgram = app->programs[app->texturedGeometryProgramIdx];
-	
+
 	GLint attributeCount;
 	glGetProgramiv(texturedGeometryProgram.handle, GL_ACTIVE_ATTRIBUTES, &attributeCount);
 
@@ -277,7 +285,7 @@ void Init(App* app)
 			attributeName);
 
 		GLint attributeLocation = glGetAttribLocation(texturedGeometryProgram.handle, attributeName);
-		VertexShaderAttribute attribute = VertexShaderAttribute(attributeLocation,GetComponentCount(attributeType));
+		VertexShaderAttribute attribute = VertexShaderAttribute(attributeLocation, GetComponentCount(attributeType));
 		texturedGeometryProgram.vertexInputLayout.attributes.push_back(attribute);
 	}
 
@@ -291,26 +299,23 @@ void InitCamera(App* app)
 	float aspectRatio = (float)app->displaySize.x / (float)app->displaySize.y;
 	float zNear = 0.1f;
 	float zFar = 1000.0f;
-	app->camera.position = vec3(-5.0f, 5.0f, 0.0f);
+	app->camera.position = vec3(-10.0f, 5.0f, 0.0f);
 	app->camera.target = vec3(0.0f, 1.0f, 0.0f);
 	app->camera.projection = glm::perspective(glm::radians(60.f), aspectRatio, zNear, zFar);
 	app->camera.view = glm::lookAt(app->camera.position, app->camera.target, vec3(0.0f, 1.0f, 0.0f));
 }
 
-GLuint CreateUniformBuffers()
+void CreateUniformBuffers(App* app)
 {
-	GLint maxUniformBufferSize, uniformBlockAligment;
+	GLint maxUniformBufferSize;
 	glGetIntegerv(GL_MAX_UNIFORM_BLOCK_SIZE, &maxUniformBufferSize);
-	glGetIntegerv(GL_UNIFORM_BUFFER_OFFSET_ALIGNMENT, &uniformBlockAligment);
+	glGetIntegerv(GL_UNIFORM_BUFFER_OFFSET_ALIGNMENT, &app->uniformBlockAlignment);
 
 	// For each buffer you need to create
-	GLuint bufferHandle;
-	glGenBuffers(1, &bufferHandle);
-	glBindBuffer(GL_UNIFORM_BUFFER, bufferHandle);
+	glGenBuffers(1, &app->bufferHandle);
+	glBindBuffer(GL_UNIFORM_BUFFER, app->bufferHandle);
 	glBufferData(GL_UNIFORM_BUFFER, maxUniformBufferSize, NULL, GL_STREAM_DRAW);
 	glBindBuffer(GL_UNIFORM_BUFFER, 0);
-
-	return bufferHandle;
 }
 
 void Gui(App* app)
@@ -346,16 +351,27 @@ void Gui(App* app)
 void Update(App* app)
 {
 	// You can handle app->input keyboard/mouse here
+}
 
+void UniformBufferAlignment(App* app, Entity entity)
+{
 	glBindBuffer(GL_UNIFORM_BUFFER, app->bufferHandle);
 	u8* bufferData = (u8*)glMapBuffer(GL_UNIFORM_BUFFER, GL_WRITE_ONLY);
 	u32 bufferHead = 0;
 
-	memcpy(bufferData + bufferHead, glm::value_ptr(app->entity.world), sizeof(glm::mat4));
+	// Align
+	bufferHead = Align(bufferHead, app->uniformBlockAlignment);
+
+	entity.localParamsOffset = bufferHead;
+
+	memcpy(bufferData + bufferHead, glm::value_ptr(entity.worldMatrix), sizeof(glm::mat4));
 	bufferHead += sizeof(glm::mat4);
 
-	memcpy(bufferData + bufferHead, glm::value_ptr(app->entity.worldViewProjection), sizeof(glm::mat4));
+	glm::mat4 worldViewProjection = app->camera.projection * app->camera.view * entity.worldMatrix;
+	memcpy(bufferData + bufferHead, glm::value_ptr(worldViewProjection), sizeof(glm::mat4));
 	bufferHead += sizeof(glm::mat4);
+
+	entity.localParamsSize = bufferHead - entity.localParamsOffset;
 
 	glUnmapBuffer(GL_UNIFORM_BUFFER);
 	glBindBuffer(GL_UNIFORM_BUFFER, 0);
@@ -408,26 +424,30 @@ void Render(App* app)
 		Program& programTexturedGeometry = app->programs[app->texturedGeometryProgramIdx];
 		glUseProgram(programTexturedGeometry.handle);
 
-		// TODO: Change index 0 by for of entities
-		Model& model = app->models[0];
-		Mesh& mesh = app->meshes[model.meshIdx];
-
-		for (u32 i = 0; i < mesh.submeshes.size(); ++i)
+		for (Entity entity : app->entities)
 		{
-			GLuint vao = FindVAO(mesh, i, programTexturedGeometry);
-			glBindVertexArray(vao);
-			u32 submeshMaterialIdx = model.materialIdx[i];
-			Material& submeshMaterial = app->materials[submeshMaterialIdx];
+			Model& model = app->models[entity.modelIndex];
+			Mesh& mesh = app->meshes[model.meshIdx];
 
-			glActiveTexture(GL_TEXTURE0);
-			GLuint textureHandle = app->textures[submeshMaterial.albedoTextureIdx].handle;
-			glBindTexture(GL_TEXTURE_2D, textureHandle);
-			glUniform1i(app->programUniformTexture, 0);
+			UniformBufferAlignment(app, entity);
 
-			Submesh& submesh = mesh.submeshes[i];
-			glDrawElements(GL_TRIANGLES, submesh.indices.size(), GL_UNSIGNED_INT, (void*)(u64)submesh.indexOffset);
+			for (u32 i = 0; i < mesh.submeshes.size(); ++i)
+			{
+				GLuint vao = FindVAO(mesh, i, programTexturedGeometry);
+				glBindVertexArray(vao);
+				u32 submeshMaterialIdx = model.materialIdx[i];
+				Material& submeshMaterial = app->materials[submeshMaterialIdx];
 
-			glBindVertexArray(0);
+				glActiveTexture(GL_TEXTURE0);
+				GLuint textureHandle = app->textures[submeshMaterial.albedoTextureIdx].handle;
+				glBindTexture(GL_TEXTURE_2D, textureHandle);
+				glUniform1i(app->programUniformTexture, 0);
+
+				Submesh& submesh = mesh.submeshes[i];
+				glDrawElements(GL_TRIANGLES, submesh.indices.size(), GL_UNSIGNED_INT, (void*)(u64)submesh.indexOffset);
+
+				glBindVertexArray(0);
+			}
 		}
 
 		glUseProgram(0);
@@ -543,4 +563,9 @@ u8 GetComponentCount(const GLenum& type)
 	case GL_DOUBLE_MAT4x3:		return 12;
 	default:					return 0;
 	}
+}
+
+u32 Align(u32 value, u32 alignment)
+{
+	return (value + alignment - 1) & ~(alignment - 1);
 }

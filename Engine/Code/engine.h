@@ -140,8 +140,10 @@ struct Camera
 
 struct Entity
 {
-    glm::mat4 world;
-    glm::mat4 worldViewProjection;
+    glm::mat4   worldMatrix;
+    u32         modelIndex;
+    u32         localParamsOffset;
+    u32         localParamsSize;
 };
 
 const VertexV3V2 vertices[] = {
@@ -204,6 +206,9 @@ struct App
     // Buffer handle
     GLuint bufferHandle;
 
+    // Uniform Block Alignment
+    GLint uniformBlockAlignment;
+
     // GlInfo
     OpenGLInfo glInfo;
 
@@ -211,12 +216,12 @@ struct App
     Camera camera;
 
     // Entity
-    Entity entity;
+    std::vector<Entity> entities;
 };
 
 void Init(App* app);
 
-GLuint CreateUniformBuffers();
+void CreateUniformBuffers(App* app);
 
 void InitCamera(App* app);
 
@@ -230,6 +235,8 @@ void Gui(App* app);
 
 void Update(App* app);
 
+void UniformBufferAlignment(App* app, Entity entity);
+
 void Render(App* app);
 
 u32 LoadTexture2D(App* app, const char* filepath);
@@ -239,4 +246,6 @@ GLuint FindVAO(Mesh& mesh, u32 submeshIndex, const Program& program);
 glm::mat4 TransformConstructor(const vec3& pos = vec3(0.0f), const vec3& rotDegrees = vec3(0.0f), const vec3& scale = vec3(1.0f));
 
 u8 GetComponentCount(const GLenum& type);
+
+u32 Align(u32 value, u32 alignment);
 
