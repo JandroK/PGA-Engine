@@ -146,6 +146,16 @@ struct Entity
     u32         localParamsSize;
 };
 
+struct PrimitiveIndex
+{
+    u32 plane;
+    u32 cube;
+    u32 sphere;
+    u32 cylinder;
+    u32 cone;
+    u32 torus;
+};
+
 const VertexV3V2 vertices[] = {
     {glm::vec3(-0.5, -0.5, 0.0), glm::vec2(0.0, 0.0)},
     {glm::vec3(0.5, -0.5, 0.0), glm::vec2(1.0, 0.0)},
@@ -183,7 +193,6 @@ struct App
     u32 texturedGeometryProgramIdx;
     
     // texture indices
-    u32 diceTexIdx;
     u32 whiteTexIdx;
     u32 blackTexIdx;
     u32 normalTexIdx;
@@ -217,6 +226,9 @@ struct App
 
     // Entity
     std::vector<Entity> entities;
+
+    // PrimitiveIndex
+    PrimitiveIndex primitiveIndex;
 };
 
 void Init(App* app);
@@ -245,7 +257,11 @@ GLuint FindVAO(Mesh& mesh, u32 submeshIndex, const Program& program);
 
 glm::mat4 TransformConstructor(const vec3& pos = vec3(0.0f), const vec3& rotDegrees = vec3(0.0f), const vec3& scale = vec3(1.0f));
 
+glm::mat4 TransformScale(const glm::mat4 transform, const vec3& scaleFactor);
+
 u8 GetComponentCount(const GLenum& type);
 
 u32 Align(u32 value, u32 alignment);
+
+Entity GeneratePrimitive(u32 primitiveIndex);
 

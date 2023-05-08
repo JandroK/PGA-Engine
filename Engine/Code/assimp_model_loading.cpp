@@ -1,7 +1,6 @@
 #pragma once
 
 #include "assimp_model_loading.h"
-#include "engine.h"
 
 void ProcessAssimpMesh(const aiScene* scene, aiMesh* mesh, Mesh* myMesh, u32 baseMeshMaterialIndex, std::vector<u32>& submeshMaterialIndices)
 {

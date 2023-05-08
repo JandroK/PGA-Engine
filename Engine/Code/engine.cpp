@@ -215,7 +215,6 @@ void InicializeResources(App* app)
 
 void LoadTextures(App* app)
 {
-	app->diceTexIdx = LoadTexture2D(app, "dice.png");
 	app->whiteTexIdx = LoadTexture2D(app, "color_white.png");
 	app->blackTexIdx = LoadTexture2D(app, "color_black.png");
 	app->normalTexIdx = LoadTexture2D(app, "color_normal.png");
@@ -251,19 +250,32 @@ void Init(App* app)
 	// Crating uniform buffers
 	CreateUniformBuffers(app);
 
-	u32 modelIndex = LoadModel(app, "Patrick/patrick.obj"); // "Backpack/backpack.obj"
+	// Loading Models
+	app->primitiveIndex.plane =		LoadModel(app, "Primitives/plane.fbx");
+	app->primitiveIndex.cube =		LoadModel(app, "Primitives/cube.fbx");
+	app->primitiveIndex.sphere =	LoadModel(app, "Primitives/sphere.fbx");
+	app->primitiveIndex.cylinder =	LoadModel(app, "Primitives/cylinder.fbx");
+	app->primitiveIndex.cone =		LoadModel(app, "Primitives/cone.fbx");
+	app->primitiveIndex.torus =		LoadModel(app, "Primitives/torus.fbx");
+	u32 modelIndex =				LoadModel(app, "Patrick/patrick.obj"); // "Backpack/backpack.obj"
 
 	// Fill entities array
 	for (size_t i = 0; i < 3; ++i)
 	{
 		Entity e;
-		vec3 pos = glm::rotate(glm::radians(360.0f / 3.0f * i), vec3(0.0f, 1.0f, 0.0f)) * vec4(vec3(4.0f, 0.0f, 0.0f), 1.0f);
+		vec3 pos = glm::rotate(glm::radians(360.0f / 3.0f * i), vec3(0.0f, 1.0f, 0.0f)) * vec4(vec3(4.0f, 4.0f, 0.0f), 1.0f);
 		e.worldMatrix = TransformConstructor(pos, vec3(0.0f, -90.0f, 0.0f));
 		e.modelIndex = modelIndex;
 
 		app->entities.push_back(e);
 	}
 
+	// Set up playground
+	Entity playground = GeneratePrimitive(app->primitiveIndex.plane);
+	playground.worldMatrix = TransformScale(playground.worldMatrix, vec3(10));
+	app->entities.push_back(playground);
+
+	// Load programs
 	app->texturedGeometryProgramIdx = LoadProgram(app, "shaders.glsl", "SHOW_TEXTURED_MESH");
 	Program& texturedGeometryProgram = app->programs[app->texturedGeometryProgramIdx];
 
@@ -299,7 +311,7 @@ void InitCamera(App* app)
 	float aspectRatio = (float)app->displaySize.x / (float)app->displaySize.y;
 	float zNear = 0.1f;
 	float zFar = 1000.0f;
-	app->camera.position = vec3(-10.0f, 5.0f, 0.0f);
+	app->camera.position = vec3(-20.0f, 10.0f, 5.0f);
 	app->camera.target = vec3(0.0f, 1.0f, 0.0f);
 	app->camera.projection = glm::perspective(glm::radians(60.f), aspectRatio, zNear, zFar);
 	app->camera.view = glm::lookAt(app->camera.position, app->camera.target, vec3(0.0f, 1.0f, 0.0f));
@@ -407,7 +419,7 @@ void Render(App* app)
 		// Use 1i because we pass it 1 int, if we pass it a vector3 of floats we would use glUniform3f
 		glUniform1i(app->programUniformTexture, 0); // ID = 0
 		glActiveTexture(GL_TEXTURE0);				// The last number of GL_TEXTURE must match the above number which is 0
-		GLuint textureHandle = app->textures[app->diceTexIdx].handle;
+		GLuint textureHandle = app->textures[app->whiteTexIdx].handle;
 		glBindTexture(GL_TEXTURE_2D, textureHandle);
 
 		// Dibujamos usando triangulos
@@ -520,6 +532,10 @@ glm::mat4 TransformConstructor(const vec3& pos, const vec3& rotDegrees, const ve
 
 	return glm::scale(transform, scale);
 }
+glm::mat4 TransformScale(const glm::mat4 transform, const vec3& scaleFactor)
+{
+	return glm::scale(transform, scaleFactor);
+}
 
 //////////////////////////////////////////////////
 
@@ -568,4 +584,14 @@ u8 GetComponentCount(const GLenum& type)
 u32 Align(u32 value, u32 alignment)
 {
 	return (value + alignment - 1) & ~(alignment - 1);
+}
+
+// Primitives
+Entity GeneratePrimitive(u32 primitiveIndex)
+{
+	Entity e;
+	e.worldMatrix = TransformConstructor(vec3(0.0f, 0.0f, 0.0f), vec3(0.0f, 0.0f, 0.0f), vec3(0.01f, 0.01f, 0.01f));
+	e.modelIndex = primitiveIndex;
+
+	return e;
 }
