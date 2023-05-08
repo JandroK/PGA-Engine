@@ -12,6 +12,8 @@
 
 #include "assimp_model_loading.h"
 
+#define BINDING(b) b
+
 GLuint CreateProgramFromSource(String programSource, const char* shaderName)
 {
 	GLchar  infoLogBuffer[1024] = {};
@@ -242,6 +244,16 @@ void Init(App* app)
 	InicializeGLInfo(app);
 
 	//////////////////////////////////
+	
+	// Init Camera
+	InitCamera(app);
+
+	// Crating uniform buffers
+	app->bufferHandle = CreateUniformBuffers();
+
+	// Set position and scale of entity
+	app->entity.world = TransformConstructor(vec3(4.0f, 0.0f, 0.0f), vec3(0.0f, -90.0f, 0.0f));
+	app->entity.worldViewProjection = app->camera.projection * app->camera.view * app->entity.world;
 
 	LoadModel(app, "Patrick/patrick.obj"); // "Backpack/backpack.obj"
 	app->texturedGeometryProgramIdx = LoadProgram(app, "shaders.glsl", "SHOW_TEXTURED_MESH");
@@ -272,6 +284,33 @@ void Init(App* app)
 	app->programUniformTexture = glGetUniformLocation(texturedGeometryProgram.handle, "uTexture");
 
 	app->mode = MESH;
+}
+
+void InitCamera(App* app)
+{
+	float aspectRatio = (float)app->displaySize.x / (float)app->displaySize.y;
+	float zNear = 0.1f;
+	float zFar = 1000.0f;
+	app->camera.position = vec3(-5.0f, 5.0f, 0.0f);
+	app->camera.target = vec3(0.0f, 1.0f, 0.0f);
+	app->camera.projection = glm::perspective(glm::radians(60.f), aspectRatio, zNear, zFar);
+	app->camera.view = glm::lookAt(app->camera.position, app->camera.target, vec3(0.0f, 1.0f, 0.0f));
+}
+
+GLuint CreateUniformBuffers()
+{
+	GLint maxUniformBufferSize, uniformBlockAligment;
+	glGetIntegerv(GL_MAX_UNIFORM_BLOCK_SIZE, &maxUniformBufferSize);
+	glGetIntegerv(GL_UNIFORM_BUFFER_OFFSET_ALIGNMENT, &uniformBlockAligment);
+
+	// For each buffer you need to create
+	GLuint bufferHandle;
+	glGenBuffers(1, &bufferHandle);
+	glBindBuffer(GL_UNIFORM_BUFFER, bufferHandle);
+	glBufferData(GL_UNIFORM_BUFFER, maxUniformBufferSize, NULL, GL_STREAM_DRAW);
+	glBindBuffer(GL_UNIFORM_BUFFER, 0);
+
+	return bufferHandle;
 }
 
 void Gui(App* app)
@@ -307,6 +346,23 @@ void Gui(App* app)
 void Update(App* app)
 {
 	// You can handle app->input keyboard/mouse here
+
+	glBindBuffer(GL_UNIFORM_BUFFER, app->bufferHandle);
+	u8* bufferData = (u8*)glMapBuffer(GL_UNIFORM_BUFFER, GL_WRITE_ONLY);
+	u32 bufferHead = 0;
+
+	memcpy(bufferData + bufferHead, glm::value_ptr(app->entity.world), sizeof(glm::mat4));
+	bufferHead += sizeof(glm::mat4);
+
+	memcpy(bufferData + bufferHead, glm::value_ptr(app->entity.worldViewProjection), sizeof(glm::mat4));
+	bufferHead += sizeof(glm::mat4);
+
+	glUnmapBuffer(GL_UNIFORM_BUFFER);
+	glBindBuffer(GL_UNIFORM_BUFFER, 0);
+
+	u32 blockOffset = 0;
+	u32 blockSize = sizeof(glm::mat4) * 2;
+	glBindBufferRange(GL_UNIFORM_BUFFER, BINDING(1), app->bufferHandle, blockOffset, blockSize);
 }
 
 void Render(App* app)
@@ -431,6 +487,21 @@ GLuint FindVAO(Mesh& mesh, u32 submeshIndex, const Program& program)
 
 	return vaoHandle;
 }
+
+// Transform Constructor
+glm::mat4 TransformConstructor(const vec3& pos, const vec3& rotDegrees, const vec3& scale)
+{
+	glm::mat4 transform = glm::translate(pos);
+
+	glm::vec3 rotRadians = glm::radians(rotDegrees);
+	transform = glm::rotate(transform, rotRadians.x, glm::vec3(1.0f, 0.0f, 0.0f));
+	transform = glm::rotate(transform, rotRadians.y, glm::vec3(0.0f, 1.0f, 0.0f));
+	transform = glm::rotate(transform, rotRadians.z, glm::vec3(0.0f, 0.0f, 1.0f));
+
+	return glm::scale(transform, scale);
+}
+
+//////////////////////////////////////////////////
 
 u8 GetComponentCount(const GLenum& type)
 {

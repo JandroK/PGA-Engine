@@ -130,6 +130,20 @@ struct VertexV3V2
     glm::vec2 uv;
 };
 
+struct Camera 
+{
+    glm::mat4 projection;
+    glm::mat4 view;
+    glm::vec3 position;
+    glm::vec3 target;
+};
+
+struct Entity
+{
+    glm::mat4 world;
+    glm::mat4 worldViewProjection;
+};
+
 const VertexV3V2 vertices[] = {
     {glm::vec3(-0.5, -0.5, 0.0), glm::vec2(0.0, 0.0)},
     {glm::vec3(0.5, -0.5, 0.0), glm::vec2(1.0, 0.0)},
@@ -187,11 +201,24 @@ struct App
     // VAO object to link our screen filling quad with our textured quad shader
     GLuint vao;
 
+    // Buffer handle
+    GLuint bufferHandle;
+
     // GlInfo
     OpenGLInfo glInfo;
+
+    // Camera
+    Camera camera;
+
+    // Entity
+    Entity entity;
 };
 
 void Init(App* app);
+
+GLuint CreateUniformBuffers();
+
+void InitCamera(App* app);
 
 void InicializeGLInfo(App* app);
 
@@ -208,6 +235,8 @@ void Render(App* app);
 u32 LoadTexture2D(App* app, const char* filepath);
 
 GLuint FindVAO(Mesh& mesh, u32 submeshIndex, const Program& program);
+
+glm::mat4 TransformConstructor(const vec3& pos = vec3(0.0f), const vec3& rotDegrees = vec3(0.0f), const vec3& scale = vec3(1.0f));
 
 u8 GetComponentCount(const GLenum& type);
 
