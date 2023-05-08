@@ -109,10 +109,10 @@ struct Program
 
 enum Mode
 {
-    Mode_TexturedQuad,  // To render UI (maybe)
-    Mode_Mesh,          // To render meshes
+    TEXTURED_QUAD,  // To render UI (maybe)
+    MESH,          // To render meshes
 
-    Mode_Count          // Number of Modes [MAX_MODE]
+    COUNT          // Number of Modes [MAX_MODE]
 };
 
 struct OpenGLInfo
@@ -192,6 +192,12 @@ struct App
 };
 
 void Init(App* app);
+
+void InicializeGLInfo(App* app);
+
+void LoadTextures(App* app);
+
+void InicializeResources(App* app);
 
 void Gui(App* app);
 

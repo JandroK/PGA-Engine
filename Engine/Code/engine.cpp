@@ -182,7 +182,7 @@ u32 LoadTexture2D(App* app, const char* filepath)
 	}
 }
 
-void Init(App* app)
+void InicializeResources(App* app)
 {
 	// Initialize the resources
 	glGenBuffers(1, &app->embeddedVertices);
@@ -209,15 +209,19 @@ void Init(App* app)
 
 	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, app->embeddedElements);
 	glBindVertexArray(0);
+}
 
-	//////////////////////////////////
-
+void LoadTextures(App* app)
+{
 	app->diceTexIdx = LoadTexture2D(app, "dice.png");
 	app->whiteTexIdx = LoadTexture2D(app, "color_white.png");
 	app->blackTexIdx = LoadTexture2D(app, "color_black.png");
 	app->normalTexIdx = LoadTexture2D(app, "color_normal.png");
 	app->magentaTexIdx = LoadTexture2D(app, "color_magenta.png");
+}
 
+void InicializeGLInfo(App* app)
+{
 	app->glInfo.glVersion = reinterpret_cast<const char*>(glGetString(GL_VERSION));
 	app->glInfo.glRender = reinterpret_cast<const char*>(glGetString(GL_RENDERER));
 	app->glInfo.glVendor = reinterpret_cast<const char*>(glGetString(GL_VENDOR));
@@ -229,6 +233,13 @@ void Init(App* app)
 	{
 		app->glInfo.glExtensions.push_back(reinterpret_cast<const char*>(glGetStringi(GL_EXTENSIONS, GLuint(i))));
 	}
+}
+
+void Init(App* app)
+{
+	InicializeResources(app);
+	LoadTextures(app);
+	InicializeGLInfo(app);
 
 	//////////////////////////////////
 
@@ -260,7 +271,7 @@ void Init(App* app)
 
 	app->programUniformTexture = glGetUniformLocation(texturedGeometryProgram.handle, "uTexture");
 
-	app->mode = Mode_Mesh;
+	app->mode = MESH;
 }
 
 void Gui(App* app)
@@ -311,7 +322,7 @@ void Render(App* app)
 
 	switch (app->mode)
 	{
-	case Mode_TexturedQuad:
+	case TEXTURED_QUAD:
 	{
 		// Indicate which shader we are going to use
 		Program& programTexturedGeometry = app->programs[app->texturedGeometryProgramIdx];
@@ -335,7 +346,7 @@ void Render(App* app)
 
 		break;
 	}
-	case Mode_Mesh:
+	case MESH:
 	{
 		// Indicate which shader we are going to use
 		Program& programTexturedGeometry = app->programs[app->texturedGeometryProgramIdx];
@@ -459,6 +470,6 @@ u8 GetComponentCount(const GLenum& type)
 	case GL_DOUBLE_MAT3x4:		return 12;
 	case GL_DOUBLE_MAT4x2:		return 8;
 	case GL_DOUBLE_MAT4x3:		return 12;
-	default: return 0;
+	default:					return 0;
 	}
 }
