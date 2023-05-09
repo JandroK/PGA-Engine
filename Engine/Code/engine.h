@@ -256,7 +256,11 @@ struct App
     Buffer uniformBuffer;
 
     // Uniform Block Alignment
-    GLint uniformBlockAlignment;
+    GLint uniformBufferAlignment;
+
+    // GlobalParams
+    u32 globalParamsSize;
+    u32 globalParamsOffset;
 
     // GlInfo
     OpenGLInfo glInfo;
@@ -292,7 +296,7 @@ void ShowOpenGlInfo(App* app);
 
 void Update(App* app);
 
-void UniformBufferAlignment(App* app, Entity entity);
+void UniformBufferAlignment(App* app);
 
 void Render(App* app);
 

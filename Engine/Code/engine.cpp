@@ -324,7 +324,7 @@ void CreateUniformBuffers(App* app)
 {
 	GLint maxUniformBufferSize;
 	glGetIntegerv(GL_MAX_UNIFORM_BLOCK_SIZE, &maxUniformBufferSize);
-	glGetIntegerv(GL_UNIFORM_BUFFER_OFFSET_ALIGNMENT, &app->uniformBlockAlignment);
+	glGetIntegerv(GL_UNIFORM_BUFFER_OFFSET_ALIGNMENT, &app->uniformBufferAlignment);
 
 	// For each buffer you need to create
 	app->uniformBuffer = CreateConstantBuffer(maxUniformBufferSize);
@@ -406,34 +406,50 @@ void ShowOpenGlInfo(App* app)
 void Update(App* app)
 {
 	// You can handle app->input keyboard/mouse here
+	UniformBufferAlignment(app);
 }
 
-void UniformBufferAlignment(App* app, Entity entity)
+void UniformBufferAlignment(App* app)
 {
 	glBindBuffer(GL_UNIFORM_BUFFER, app->uniformBuffer.handle);
-	u8* bufferData = (u8*)glMapBuffer(GL_UNIFORM_BUFFER, GL_WRITE_ONLY);
-	u32 bufferHead = 0;
+	app->uniformBuffer.data = (u8*)glMapBuffer(GL_UNIFORM_BUFFER, GL_WRITE_ONLY);
+	app->uniformBuffer.head = 0;
 
-	// Align
-	bufferHead = Align(bufferHead, app->uniformBlockAlignment);
+	// Global params
+	app->globalParamsOffset = app->uniformBuffer.head;
 
-	entity.localParamsOffset = bufferHead;
+	PushVec3(app->uniformBuffer, app->camera.position);
+	PushUInt(app->uniformBuffer, app->lights.size());
 
-	memcpy(bufferData + bufferHead, glm::value_ptr(entity.worldMatrix), sizeof(glm::mat4));
-	bufferHead += sizeof(glm::mat4);
+	for (u32 i = 0; i < app->lights.size(); ++i)
+	{
+		AlignHead(app->uniformBuffer, sizeof(vec4));
 
-	glm::mat4 worldViewProjection = app->camera.projection * app->camera.view * entity.worldMatrix;
-	memcpy(bufferData + bufferHead, glm::value_ptr(worldViewProjection), sizeof(glm::mat4));
-	bufferHead += sizeof(glm::mat4);
+		Light& light = app->lights[i];
+		PushUInt(app->uniformBuffer, light.type);
+		PushVec3(app->uniformBuffer, light.color);
+		PushVec3(app->uniformBuffer, light.direction);
+		PushVec3(app->uniformBuffer, light.position);
+	}
 
-	entity.localParamsSize = bufferHead - entity.localParamsOffset;
+	app->globalParamsSize = app->uniformBuffer.head - app->globalParamsOffset;
+
+	// Local Params
+	for (u32 i = 0; i < app->entities.size(); ++i)
+	{
+		AlignHead(app->uniformBuffer, app->uniformBufferAlignment);
+		Entity& entity = app->entities[i];
+		glm::mat4 world = entity.worldMatrix;
+		glm::mat4 worldViewProjection = app->camera.projection * app->camera.view * world;
+
+		entity.localParamsOffset = app->uniformBuffer.head;
+		PushMat4(app->uniformBuffer, world);
+		PushMat4(app->uniformBuffer, worldViewProjection);
+		entity.localParamsSize = app->uniformBuffer.head - entity.localParamsOffset;
+	}
 
 	glUnmapBuffer(GL_UNIFORM_BUFFER);
 	glBindBuffer(GL_UNIFORM_BUFFER, 0);
-
-	u32 blockOffset = 0;
-	u32 blockSize = sizeof(glm::mat4) * 2;
-	glBindBufferRange(GL_UNIFORM_BUFFER, BINDING(1), app->uniformBuffer.handle, blockOffset, blockSize);
 }
 
 void Render(App* app)
@@ -484,7 +500,7 @@ void Render(App* app)
 			Model& model = app->models[entity.modelIndex];
 			Mesh& mesh = app->meshes[model.meshIdx];
 
-			UniformBufferAlignment(app, entity);
+			glBindBufferRange(GL_UNIFORM_BUFFER, BINDING(1), app->uniformBuffer.handle, entity.localParamsOffset, entity.localParamsSize);
 
 			for (u32 i = 0; i < mesh.submeshes.size(); ++i)
 			{

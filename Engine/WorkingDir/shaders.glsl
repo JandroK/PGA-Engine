@@ -89,6 +89,13 @@ in vec3 vViewDir;
 
 uniform sampler2D uTexture;
 
+layout(binding = 0, std140) uniform GlobalParams
+{
+	vec3 			uCameraPosition;
+	unsigned int 	uLightCount;
+	Light 			uLight[16];
+};
+
 layout(location = 0) out vec4 oColor;
 
 void main()
