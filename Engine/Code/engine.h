@@ -200,14 +200,14 @@ struct Light
     std::string name;
 };
 
-struct PrimitiveIndex
+enum PrimitiveType
 {
-    u32 plane;
-    u32 cube;
-    u32 sphere;
-    u32 cylinder;
-    u32 cone;
-    u32 torus;
+    CUBE = 0,
+    SPHERE,
+    CYLINDER,
+    CONE,
+    TORUS,
+    PLANE,
 };
 
 const VertexV3V2 vertices[] = {
@@ -289,7 +289,8 @@ struct App
     std::vector<Light> lights;
 
     // PrimitiveIndex
-    PrimitiveIndex primitiveIndex;
+    std::vector<u32> primitiveIndex;
+    std::vector<std::string> primitiveNames;
 };
 
 void Init(App* app);
@@ -305,6 +306,10 @@ void LoadTextures(App* app);
 void InicializeResources(App* app);
 
 void Gui(App* app);
+
+void GuiPrimitives(App* app);
+
+void GuiLightsInstance(App* app);
 
 void GuiEntities(App* app);
 
@@ -330,7 +335,7 @@ glm::mat4 TransformScale(const glm::mat4 transform, const vec3& scaleFactor);
 
 u8 GetComponentCount(const GLenum& type);
 
-Entity GeneratePrimitive(u32 primitiveIndex);
+Entity GeneratePrimitive(u32 primitiveIndex, std::string name, float scaleFactor = 1.0f);
 
 Light InstanceLight(LightType type);
 

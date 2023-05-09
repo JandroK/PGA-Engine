@@ -251,12 +251,13 @@ void Init(App* app)
 	CreateUniformBuffers(app);
 
 	// Loading Models
-	app->primitiveIndex.plane =		LoadModel(app, "Primitives/plane.fbx");
-	app->primitiveIndex.cube =		LoadModel(app, "Primitives/cube.fbx");
-	app->primitiveIndex.sphere =	LoadModel(app, "Primitives/sphere.fbx");
-	app->primitiveIndex.cylinder =	LoadModel(app, "Primitives/cylinder.fbx");
-	app->primitiveIndex.cone =		LoadModel(app, "Primitives/cone.fbx");
-	app->primitiveIndex.torus =		LoadModel(app, "Primitives/torus.fbx");
+	app->primitiveNames = {"Cube", "Sphere", "Cylinder", "Cone", "Torus", "Plane"};
+	for (int i = 0; i < app->primitiveNames.size(); i++)
+	{
+		std::string path = "Primitives/" + app->primitiveNames[i] + ".fbx";
+		app->primitiveIndex.push_back(LoadModel(app, path.c_str()));
+	}
+
 	u32 modelIndex =				LoadModel(app, "Patrick/patrick.obj"); // "Backpack/backpack.obj"
 
 	// Fill entities array
@@ -274,9 +275,9 @@ void Init(App* app)
 	}
 
 	// Set up playground
-	Entity playground = GeneratePrimitive(app->primitiveIndex.plane);
-	playground.worldMatrix = TransformScale(playground.worldMatrix, vec3(10));
+	Entity playground = GeneratePrimitive(app->primitiveIndex[PrimitiveType::PLANE], "Playground", 10.0f);
 	app->entities.push_back(playground);
+
 
 	// Create light
 	app->lights.push_back(InstanceLight(DIRECTIONAL_LIGHT));
@@ -343,12 +344,52 @@ void Gui(App* app)
 	// Inspector Transform
 	ImGui::Begin("Inspector Transform");
 
+	GuiPrimitives(app);
+	GuiLightsInstance(app);
+
+	ImGui::NewLine();
+
 	GuiEntities(app);
 	GuiLights(app);
 
 	ImGui::End();
 
 	//ShowOpenGlInfo(app);
+}
+
+void GuiLightsInstance(App* app)
+{
+	// Draw the drop down to generate light
+	if (ImGui::BeginMenu("Lights"))
+	{
+		if (ImGui::MenuItem("Directional Light", nullptr))
+		{
+			app->lights.push_back(InstanceLight(DIRECTIONAL_LIGHT));
+		}
+		if (ImGui::MenuItem("Point Light", nullptr))
+		{
+			app->lights.push_back(InstanceLight(POINT_LIGHT));
+		}
+
+		ImGui::EndMenu();
+	}
+}
+
+void GuiPrimitives(App* app)
+{
+	// Draw the drop down to generate primitive
+	if (ImGui::BeginMenu("Primitives"))
+	{
+		for (size_t i = 0; i < app->primitiveIndex.size(); i++)
+		{
+			if (ImGui::MenuItem(app->primitiveNames[i].c_str(), nullptr))
+			{
+				app->entities.push_back(GeneratePrimitive(app->primitiveIndex[i], app->primitiveNames[i]));
+			}
+		}
+
+		ImGui::EndMenu();
+	}
 }
 
 void GuiEntities(App* app)
@@ -364,21 +405,21 @@ void GuiEntities(App* app)
 		{
 			ImGui::Text("Position: ");
 			glm::vec3& position = app->entities[i].transform.position;
-			if (ImGui::DragFloat3("##Position", &position[0], 0.1f, true))
+			if (ImGui::DragFloat3("##Position", &position[0], 0.5f, true))
 			{
 				app->entities[i].worldMatrix = TransformConstructor(app->entities[i].transform);
 			}
 
 			ImGui::Text("Rotation: ");
 			glm::vec3& rotation = app->entities[i].transform.rotation;
-			if (ImGui::DragFloat3("##Rotation", &rotation[0], 0.1f, true))
+			if (ImGui::DragFloat3("##Rotation", &rotation[0], 1.0f, 0.0f, 360.0f))
 			{
 				app->entities[i].worldMatrix = TransformConstructor(app->entities[i].transform);
 			}
 
 			ImGui::Text("Scale: ");
 			glm::vec3& scale = app->entities[i].transform.scale;
-			if (ImGui::DragFloat3("##Scale", &scale[0], 0.1f, true))
+			if (ImGui::DragFloat3("##Scale", &scale[0], 0.01f, 0.00001f, 10000.0f))
 			{
 				app->entities[i].worldMatrix = TransformConstructor(app->entities[i].transform);
 			}
@@ -693,12 +734,13 @@ u8 GetComponentCount(const GLenum& type)
 }
 
 // Primitives
-Entity GeneratePrimitive(u32 primitiveIndex)
+Entity GeneratePrimitive(u32 primitiveIndex, std::string name, float scaleFactor)
 {
 	Entity e;
-	e.transform = Transform(vec3(0.0f, 0.0f, 0.0f), vec3(0.0f, 0.0f, 0.0f), vec3(0.01f, 0.01f, 0.01f));
+	e.transform = Transform(vec3(0.0f, 0.0f, 0.0f), vec3(0.0f, 0.0f, 0.0f), vec3(0.01f, 0.01f, 0.01f) * scaleFactor);
 	e.worldMatrix = TransformConstructor(e.transform);
 	e.modelIndex = primitiveIndex;
+	e.name = name;
 
 	return e;
 }
