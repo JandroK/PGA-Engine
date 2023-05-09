@@ -100,6 +100,7 @@ layout(location = 0) out vec4 oColor;
 
 vec3 ComputeLight(vec3 lightDir, vec3 color)
 {
+	lightDir = normalize(lightDir);
 	float diff = max(dot(vNormal, lightDir), 0.0f);
 	return vec3(diff) * color;
 }
@@ -126,7 +127,7 @@ void main()
 			// Point Light
 			case 1:
 			{
-				vec3 lightDir = normalize(uLight[i].position - vPosition);
+				vec3 lightDir = uLight[i].position - vPosition;
 				lightColor += ComputeLight(lightDir, uLight[i].color);
 			}
 			break;

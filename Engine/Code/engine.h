@@ -186,12 +186,18 @@ struct Light
         direction = dir;
         color = col;
         type = t;
+
+        if (t == POINT_LIGHT)
+            name = "Point Light";
+        else name = "Directional";
     }
 
     LightType   type;
     vec3        color;
     vec3        direction;
     vec3        position;
+
+    std::string name;
 };
 
 struct PrimitiveIndex
@@ -299,6 +305,10 @@ void LoadTextures(App* app);
 void InicializeResources(App* app);
 
 void Gui(App* app);
+
+void GuiEntities(App* app);
+
+void GuiLights(App* app);
 
 void ShowOpenGlInfo(App* app);
 

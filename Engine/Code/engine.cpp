@@ -343,6 +343,16 @@ void Gui(App* app)
 	// Inspector Transform
 	ImGui::Begin("Inspector Transform");
 
+	GuiEntities(app);
+	GuiLights(app);
+
+	ImGui::End();
+
+	//ShowOpenGlInfo(app);
+}
+
+void GuiEntities(App* app)
+{
 	for (int i = 0; i < app->entities.size(); ++i)
 	{
 		if (app->entities[i].name == "")
@@ -375,10 +385,43 @@ void Gui(App* app)
 		}
 		ImGui::PopID();
 	}
+}
 
-	ImGui::End();
+void GuiLights(App* app)
+{
+	for (int i = 0; i < app->lights.size(); i++)
+	{
+		ImGui::PushID(app->lights[i].name.c_str());
 
-	//ShowOpenGlInfo(app);
+		if (ImGui::CollapsingHeader(app->lights[i].name.c_str(), ImGuiTreeNodeFlags_DefaultOpen))
+		{
+			switch (app->lights[i].type)
+			{
+			case DIRECTIONAL_LIGHT:
+			{
+				ImGui::Text("Direction: ");
+				glm::vec3& dir = app->lights[i].direction;
+				ImGui::DragFloat3("##Direction", &dir[0], 0.1f, true);
+			}
+			break;
+			case POINT_LIGHT:
+			{
+				ImGui::Text("Position: ");
+				glm::vec3& pos = app->lights[i].position;
+				ImGui::DragFloat3("##Position", &pos[0], 0.1f, true);
+			}
+			break;
+			default:
+				break;
+			}
+
+			ImGui::Text("Color: ");
+			glm::vec3& color = app->lights[i].color;
+			ImGui::DragFloat3("##Color", &color[0], 0.1f, 0.0f, 1.0f);
+		}
+
+		ImGui::PopID();
+	}
 }
 
 void ShowOpenGlInfo(App* app)
@@ -667,10 +710,10 @@ Light InstanceLight(LightType type)
 	switch (type)
 	{
 	case DIRECTIONAL_LIGHT:
-		return Light(vec3(0.0f), glm::normalize(vec3(-1.0f)), vec3(1.0f), DIRECTIONAL_LIGHT);
+		return Light(vec3(0.0f),			 vec3(-1.0f), vec3(1.0f), DIRECTIONAL_LIGHT);
 		break;
 	case POINT_LIGHT:
-		return Light(vec3(0.0f, 5.0f, 0.0f), glm::normalize(vec3(1.0f)),  vec3(1.0f), POINT_LIGHT);
+		return Light(vec3(0.0f, 5.0f, 0.0f), vec3(1.0f),  vec3(1.0f), POINT_LIGHT);
 		break;
 	default:
 		break;
