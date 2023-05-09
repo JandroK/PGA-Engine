@@ -138,13 +138,31 @@ struct Camera
     glm::vec3 target;
 };
 
+struct Transform
+{
+    Transform(vec3 pos = vec3(0.0f, 0.0f, 0.0f), vec3 rot = vec3(0.0f, 0.0f, 0.0f), vec3 factor = vec3(1.0f, 1.0f, 1.0f))
+    {
+        position = pos;
+        rotation = rot;
+        scale = factor;
+    }
+
+    vec3 position;
+    vec3 rotation;
+    vec3 scale;
+};
+
 struct Entity
 {
+    Transform   transform;
     glm::mat4   worldMatrix;
     u32         modelIndex;
     u32         localParamsOffset;
     u32         localParamsSize;
+
+    std::string name;
 };
+
 
 struct PrimitiveIndex
 {
@@ -245,6 +263,8 @@ void InicializeResources(App* app);
 
 void Gui(App* app);
 
+void ShowOpenGlInfo(App* app);
+
 void Update(App* app);
 
 void UniformBufferAlignment(App* app, Entity entity);
@@ -255,7 +275,9 @@ u32 LoadTexture2D(App* app, const char* filepath);
 
 GLuint FindVAO(Mesh& mesh, u32 submeshIndex, const Program& program);
 
-glm::mat4 TransformConstructor(const vec3& pos = vec3(0.0f), const vec3& rotDegrees = vec3(0.0f), const vec3& scale = vec3(1.0f));
+glm::mat4 TransformConstructor(const Transform t);
+
+glm::mat4 TransformPosition(glm::mat4 matrix, const vec3& pos);
 
 glm::mat4 TransformScale(const glm::mat4 transform, const vec3& scaleFactor);
 

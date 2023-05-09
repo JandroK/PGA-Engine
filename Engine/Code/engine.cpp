@@ -264,8 +264,11 @@ void Init(App* app)
 	{
 		Entity e;
 		vec3 pos = glm::rotate(glm::radians(360.0f / 3.0f * i), vec3(0.0f, 1.0f, 0.0f)) * vec4(vec3(4.0f, 4.0f, 0.0f), 1.0f);
-		e.worldMatrix = TransformConstructor(pos, vec3(0.0f, -90.0f, 0.0f));
+		e.transform = Transform(pos, vec3(0.0f, -90.0f, 0.0f));
+		e.worldMatrix = TransformConstructor(e.transform);
 		e.modelIndex = modelIndex;
+		char n = static_cast<char>(i);
+		e.name = "Patrick " + std::to_string(i);
 
 		app->entities.push_back(e);
 	}
@@ -336,6 +339,36 @@ void Gui(App* app)
 	ImGui::Text("FPS: %f", 1.0f / app->deltaTime);
 	ImGui::End();
 
+	// Inspector Transform
+	ImGui::Begin("Inspector Transform");
+
+	for (int i = 0; i < app->entities.size(); ++i)
+	{
+		if (app->entities[i].name == "")
+			break;
+
+		ImGui::PushID(app->entities[i].name.c_str());
+
+		if (ImGui::CollapsingHeader(app->entities[i].name.c_str(), ImGuiTreeNodeFlags_DefaultOpen))
+		{
+			ImGui::Text("Position: ");
+
+			glm::vec3& position = app->entities[i].transform.position;
+			if (ImGui::DragFloat3("##Position", &position[0], 0.1f, true))
+			{
+				app->entities[i].worldMatrix = TransformConstructor(app->entities[i].transform);
+			}
+		}
+		ImGui::PopID();
+	}
+
+	ImGui::End();
+
+	//ShowOpenGlInfo(app);
+}
+
+void ShowOpenGlInfo(App* app)
+{
 	if (app->input.keys[K_SPACE] == ButtonState::BUTTON_PRESS)
 	{
 		ImGui::OpenPopup("OpenGl Info");
@@ -521,16 +554,20 @@ GLuint FindVAO(Mesh& mesh, u32 submeshIndex, const Program& program)
 }
 
 // Transform Constructor
-glm::mat4 TransformConstructor(const vec3& pos, const vec3& rotDegrees, const vec3& scale)
+glm::mat4 TransformConstructor(const Transform t)
 {
-	glm::mat4 transform = glm::translate(pos);
+	glm::mat4 transform = glm::translate(t.position);
 
-	glm::vec3 rotRadians = glm::radians(rotDegrees);
+	glm::vec3 rotRadians = glm::radians(t.rotation);
 	transform = glm::rotate(transform, rotRadians.x, glm::vec3(1.0f, 0.0f, 0.0f));
 	transform = glm::rotate(transform, rotRadians.y, glm::vec3(0.0f, 1.0f, 0.0f));
 	transform = glm::rotate(transform, rotRadians.z, glm::vec3(0.0f, 0.0f, 1.0f));
 
-	return glm::scale(transform, scale);
+	return glm::scale(transform, t.scale);
+}
+glm::mat4 TransformPosition(glm::mat4 matrix, const vec3& pos)
+{
+	return glm::translate(matrix, pos);
 }
 glm::mat4 TransformScale(const glm::mat4 transform, const vec3& scaleFactor)
 {
@@ -590,7 +627,8 @@ u32 Align(u32 value, u32 alignment)
 Entity GeneratePrimitive(u32 primitiveIndex)
 {
 	Entity e;
-	e.worldMatrix = TransformConstructor(vec3(0.0f, 0.0f, 0.0f), vec3(0.0f, 0.0f, 0.0f), vec3(0.01f, 0.01f, 0.01f));
+	e.transform = Transform(vec3(0.0f, 0.0f, 0.0f), vec3(0.0f, 0.0f, 0.0f), vec3(0.01f, 0.01f, 0.01f));
+	e.worldMatrix = TransformConstructor(e.transform);
 	e.modelIndex = primitiveIndex;
 
 	return e;
