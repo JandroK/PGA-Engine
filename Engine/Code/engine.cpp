@@ -278,6 +278,10 @@ void Init(App* app)
 	playground.worldMatrix = TransformScale(playground.worldMatrix, vec3(10));
 	app->entities.push_back(playground);
 
+	// Create light
+	app->lights.push_back(InstanceLight(DIRECTIONAL_LIGHT));
+	app->lights.push_back(InstanceLight(POINT_LIGHT));
+
 	// Load programs
 	app->texturedGeometryProgramIdx = LoadProgram(app, "shaders.glsl", "SHOW_TEXTURED_MESH");
 	Program& texturedGeometryProgram = app->programs[app->texturedGeometryProgramIdx];
@@ -500,6 +504,7 @@ void Render(App* app)
 			Model& model = app->models[entity.modelIndex];
 			Mesh& mesh = app->meshes[model.meshIdx];
 
+			glBindBufferRange(GL_UNIFORM_BUFFER, BINDING(0), app->uniformBuffer.handle, app->globalParamsOffset, app->globalParamsSize);
 			glBindBufferRange(GL_UNIFORM_BUFFER, BINDING(1), app->uniformBuffer.handle, entity.localParamsOffset, entity.localParamsSize);
 
 			for (u32 i = 0; i < mesh.submeshes.size(); ++i)
@@ -653,4 +658,21 @@ Entity GeneratePrimitive(u32 primitiveIndex)
 	e.modelIndex = primitiveIndex;
 
 	return e;
+}
+
+// Light
+
+Light InstanceLight(LightType type)
+{
+	switch (type)
+	{
+	case DIRECTIONAL_LIGHT:
+		return Light(vec3(0.0f), glm::normalize(vec3(-1.0f)), vec3(1.0f), DIRECTIONAL_LIGHT);
+		break;
+	case POINT_LIGHT:
+		return Light(vec3(0.0f, 5.0f, 0.0f), glm::normalize(vec3(1.0f)),  vec3(1.0f), POINT_LIGHT);
+		break;
+	default:
+		break;
+	}
 }

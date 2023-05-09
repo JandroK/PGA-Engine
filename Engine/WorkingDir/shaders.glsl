@@ -41,7 +41,7 @@ struct Light
     unsigned int type;
     vec3         color;
     vec3         direction;
-    vec3         positino;
+    vec3         position;
 };
 
 #if defined(VERTEX) ///////////////////////////////////////////////////
@@ -98,9 +98,42 @@ layout(binding = 0, std140) uniform GlobalParams
 
 layout(location = 0) out vec4 oColor;
 
+vec3 ComputeLight(vec3 lightDir, vec3 color)
+{
+	float diff = max(dot(vNormal, lightDir), 0.0f);
+	return vec3(diff) * color;
+}
+
 void main()
 {
-	oColor = texture(uTexture, vTexCoord);
+	// finalColor = texture color
+	vec4 finalColor = texture(uTexture, vTexCoord);
+
+	// lightColor = the sum of all light, if there aren't any,
+	// complete darkness = vec(0.0f);
+	vec3 lightColor = vec3(0.0f);
+
+	for(int i = 0; i < uLightCount; ++i)
+	{
+		switch(uLight[i].type)
+		{
+			// Directional Light
+			case 0:
+			{
+				lightColor += ComputeLight(uLight[i].direction, uLight[i].color);
+			}
+			break;
+			// Point Light
+			case 1:
+			{
+				vec3 lightDir = normalize(uLight[i].position - vPosition);
+				lightColor += ComputeLight(lightDir, uLight[i].color);
+			}
+			break;
+		}
+	}
+
+	oColor = finalColor * vec4(lightColor, 1.0f);
 }
 
 #endif

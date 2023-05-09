@@ -174,12 +174,20 @@ struct Entity
 
 enum LightType
 {
-    DIRECTIONAL_LIGHT,
-    POINT_LIGHT
+    DIRECTIONAL_LIGHT = 0,
+    POINT_LIGHT = 1
 };
 
 struct Light
 {
+    Light(vec3 pos = vec3(0.0f), vec3 dir = vec3(1.0f), vec3 col = vec3(1.0f), LightType t = LightType::POINT_LIGHT)
+    {
+        position = pos;
+        direction = dir;
+        color = col;
+        type = t;
+    }
+
     LightType   type;
     vec3        color;
     vec3        direction;
@@ -313,4 +321,6 @@ glm::mat4 TransformScale(const glm::mat4 transform, const vec3& scaleFactor);
 u8 GetComponentCount(const GLenum& type);
 
 Entity GeneratePrimitive(u32 primitiveIndex);
+
+Light InstanceLight(LightType type);
 
