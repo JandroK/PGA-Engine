@@ -5,7 +5,7 @@
 // graphics related GUI options, and so on.
 //
 
-#include "engine.h"
+#include "buffer_management.h"
 #include <imgui.h>
 #include <stb_image.h>
 #include <stb_image_write.h>
@@ -327,10 +327,7 @@ void CreateUniformBuffers(App* app)
 	glGetIntegerv(GL_UNIFORM_BUFFER_OFFSET_ALIGNMENT, &app->uniformBlockAlignment);
 
 	// For each buffer you need to create
-	glGenBuffers(1, &app->bufferHandle);
-	glBindBuffer(GL_UNIFORM_BUFFER, app->bufferHandle);
-	glBufferData(GL_UNIFORM_BUFFER, maxUniformBufferSize, NULL, GL_STREAM_DRAW);
-	glBindBuffer(GL_UNIFORM_BUFFER, 0);
+	app->uniformBuffer = CreateConstantBuffer(maxUniformBufferSize);
 }
 
 void Gui(App* app)
@@ -413,7 +410,7 @@ void Update(App* app)
 
 void UniformBufferAlignment(App* app, Entity entity)
 {
-	glBindBuffer(GL_UNIFORM_BUFFER, app->bufferHandle);
+	glBindBuffer(GL_UNIFORM_BUFFER, app->uniformBuffer.handle);
 	u8* bufferData = (u8*)glMapBuffer(GL_UNIFORM_BUFFER, GL_WRITE_ONLY);
 	u32 bufferHead = 0;
 
@@ -436,7 +433,7 @@ void UniformBufferAlignment(App* app, Entity entity)
 
 	u32 blockOffset = 0;
 	u32 blockSize = sizeof(glm::mat4) * 2;
-	glBindBufferRange(GL_UNIFORM_BUFFER, BINDING(1), app->bufferHandle, blockOffset, blockSize);
+	glBindBufferRange(GL_UNIFORM_BUFFER, BINDING(1), app->uniformBuffer.handle, blockOffset, blockSize);
 }
 
 void Render(App* app)
@@ -629,11 +626,6 @@ u8 GetComponentCount(const GLenum& type)
 	case GL_DOUBLE_MAT4x3:		return 12;
 	default:					return 0;
 	}
-}
-
-u32 Align(u32 value, u32 alignment)
-{
-	return (value + alignment - 1) & ~(alignment - 1);
 }
 
 // Primitives

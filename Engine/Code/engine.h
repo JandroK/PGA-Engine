@@ -107,6 +107,15 @@ struct Program
     u64                lastWriteTimestamp; // What is this for?
 };
 
+struct Buffer
+{
+    GLuint  handle;
+    GLenum  type;
+    u32     size;
+    u32     head;
+    void*   data; // mapped data
+};
+
 enum Mode
 {
     TEXTURED_QUAD,  // To render UI (maybe)
@@ -163,6 +172,19 @@ struct Entity
     std::string name;
 };
 
+enum LightType
+{
+    DIRECTIONAL_LIGHT,
+    POINT_LIGHT
+};
+
+struct Light
+{
+    LightType   type;
+    vec3        color;
+    vec3        direction;
+    vec3        position;
+};
 
 struct PrimitiveIndex
 {
@@ -231,7 +253,7 @@ struct App
     GLuint vao;
 
     // Buffer handle
-    GLuint bufferHandle;
+    Buffer uniformBuffer;
 
     // Uniform Block Alignment
     GLint uniformBlockAlignment;
@@ -244,6 +266,9 @@ struct App
 
     // Entity
     std::vector<Entity> entities;
+
+    // Lights
+    std::vector<Light> lights;
 
     // PrimitiveIndex
     PrimitiveIndex primitiveIndex;
@@ -282,8 +307,6 @@ glm::mat4 TransformPosition(glm::mat4 matrix, const vec3& pos);
 glm::mat4 TransformScale(const glm::mat4 transform, const vec3& scaleFactor);
 
 u8 GetComponentCount(const GLenum& type);
-
-u32 Align(u32 value, u32 alignment);
 
 Entity GeneratePrimitive(u32 primitiveIndex);
 
