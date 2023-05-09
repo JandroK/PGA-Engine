@@ -352,9 +352,22 @@ void Gui(App* app)
 		if (ImGui::CollapsingHeader(app->entities[i].name.c_str(), ImGuiTreeNodeFlags_DefaultOpen))
 		{
 			ImGui::Text("Position: ");
-
 			glm::vec3& position = app->entities[i].transform.position;
 			if (ImGui::DragFloat3("##Position", &position[0], 0.1f, true))
+			{
+				app->entities[i].worldMatrix = TransformConstructor(app->entities[i].transform);
+			}
+
+			ImGui::Text("Rotation: ");
+			glm::vec3& rotation = app->entities[i].transform.rotation;
+			if (ImGui::DragFloat3("##Rotation", &rotation[0], 0.1f, true))
+			{
+				app->entities[i].worldMatrix = TransformConstructor(app->entities[i].transform);
+			}
+
+			ImGui::Text("Scale: ");
+			glm::vec3& scale = app->entities[i].transform.scale;
+			if (ImGui::DragFloat3("##Scale", &scale[0], 0.1f, true))
 			{
 				app->entities[i].worldMatrix = TransformConstructor(app->entities[i].transform);
 			}
