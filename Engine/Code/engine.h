@@ -180,16 +180,13 @@ enum LightType
 
 struct Light
 {
-    Light(vec3 pos = vec3(0.0f), vec3 dir = vec3(1.0f), vec3 col = vec3(1.0f), LightType t = LightType::POINT_LIGHT)
+    Light(vec3 pos = vec3(0.0f), vec3 dir = vec3(1.0f), vec3 col = vec3(1.0f), LightType t = LightType::POINT_LIGHT, std::string n = "PointLight")
     {
         position = pos;
         direction = dir;
         color = col;
         type = t;
-
-        if (t == POINT_LIGHT)
-            name = "Point Light";
-        else name = "Directional";
+        name = n;
     }
 
     LightType   type;
@@ -317,6 +314,10 @@ void GuiLights(App* app);
 
 void ShowOpenGlInfo(App* app);
 
+std::string GetNewEntityName(App* app, std::string& name);
+
+std::string GetNewLightName(App* app, std::string& name);
+
 void Update(App* app);
 
 void UniformBufferAlignment(App* app);
@@ -337,5 +338,5 @@ u8 GetComponentCount(const GLenum& type);
 
 Entity GeneratePrimitive(u32 primitiveIndex, std::string name, float scaleFactor = 1.0f);
 
-Light InstanceLight(LightType type);
+Light InstanceLight(LightType type, std::string name);
 

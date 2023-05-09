@@ -280,8 +280,8 @@ void Init(App* app)
 
 
 	// Create light
-	app->lights.push_back(InstanceLight(DIRECTIONAL_LIGHT));
-	app->lights.push_back(InstanceLight(POINT_LIGHT));
+	app->lights.push_back(InstanceLight(DIRECTIONAL_LIGHT,  "Directional Light"));
+	app->lights.push_back(InstanceLight(POINT_LIGHT,		"Point Light"));
 
 	// Load programs
 	app->texturedGeometryProgramIdx = LoadProgram(app, "shaders.glsl", "SHOW_TEXTURED_MESH");
@@ -357,24 +357,6 @@ void Gui(App* app)
 	//ShowOpenGlInfo(app);
 }
 
-void GuiLightsInstance(App* app)
-{
-	// Draw the drop down to generate light
-	if (ImGui::BeginMenu("Lights"))
-	{
-		if (ImGui::MenuItem("Directional Light", nullptr))
-		{
-			app->lights.push_back(InstanceLight(DIRECTIONAL_LIGHT));
-		}
-		if (ImGui::MenuItem("Point Light", nullptr))
-		{
-			app->lights.push_back(InstanceLight(POINT_LIGHT));
-		}
-
-		ImGui::EndMenu();
-	}
-}
-
 void GuiPrimitives(App* app)
 {
 	// Draw the drop down to generate primitive
@@ -384,8 +366,32 @@ void GuiPrimitives(App* app)
 		{
 			if (ImGui::MenuItem(app->primitiveNames[i].c_str(), nullptr))
 			{
-				app->entities.push_back(GeneratePrimitive(app->primitiveIndex[i], app->primitiveNames[i]));
+				std::string name = app->primitiveNames[i].c_str();
+				name += " " +  GetNewEntityName(app, name);
+				app->entities.push_back(GeneratePrimitive(app->primitiveIndex[i], name));
 			}
+		}
+
+		ImGui::EndMenu();
+	}
+}
+
+void GuiLightsInstance(App* app)
+{
+	// Draw the drop down to generate light
+	if (ImGui::BeginMenu("Lights"))
+	{
+		if (ImGui::MenuItem("Directional Light", nullptr))
+		{
+			std::string name = "Directional Light";
+			name += " " + GetNewLightName(app, name);
+			app->lights.push_back(InstanceLight(DIRECTIONAL_LIGHT, name));
+		}
+		if (ImGui::MenuItem("Point Light", nullptr))
+		{
+			std::string name = "Point Light";
+			name += " " + GetNewLightName(app, name);
+			app->lights.push_back(InstanceLight(POINT_LIGHT, name));
 		}
 
 		ImGui::EndMenu();
@@ -489,6 +495,30 @@ void ShowOpenGlInfo(App* app)
 
 	}
 	ImGui::CloseCurrentPopup();
+}
+
+std::string GetNewEntityName(App* app, std::string& name)
+{
+	int nameRepeat = 0;
+	for (int i = 0; i < app->entities.size(); i++)
+	{
+		if (app->entities[i].name.find(name) != std::string::npos)
+			nameRepeat++;
+	}
+
+	return std::to_string(nameRepeat);
+}
+
+std::string GetNewLightName(App* app, std::string& name)
+{
+	int nameRepeat = 0;
+	for (int i = 0; i < app->lights.size(); i++)
+	{
+		if (app->lights[i].name.find(name) != std::string::npos)
+			nameRepeat++;
+	}
+
+	return std::to_string(nameRepeat);
 }
 
 void Update(App* app)
@@ -747,15 +777,15 @@ Entity GeneratePrimitive(u32 primitiveIndex, std::string name, float scaleFactor
 
 // Light
 
-Light InstanceLight(LightType type)
+Light InstanceLight(LightType type, std::string name)
 {
 	switch (type)
 	{
 	case DIRECTIONAL_LIGHT:
-		return Light(vec3(0.0f),			 vec3(-1.0f), vec3(1.0f), DIRECTIONAL_LIGHT);
+		return Light(vec3(0.0f),			 vec3(-1.0f), vec3(1.0f), DIRECTIONAL_LIGHT, name);
 		break;
 	case POINT_LIGHT:
-		return Light(vec3(0.0f, 5.0f, 0.0f), vec3(1.0f),  vec3(1.0f), POINT_LIGHT);
+		return Light(vec3(0.0f, 5.0f, 0.0f), vec3(1.0f),  vec3(1.0f), POINT_LIGHT,		 name);
 		break;
 	default:
 		break;
