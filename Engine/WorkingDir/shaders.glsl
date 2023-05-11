@@ -98,7 +98,10 @@ layout(binding = 0, std140) uniform GlobalParams
 
 layout(location = 0) out vec4 oColor;
 layout(location = 1) out vec4 oDepth;
-layout(location = 2) out vec4 oFinal;
+layout(location = 2) out vec4 oNormal;
+layout(location = 3) out vec4 oPosition;
+layout(location = 4) out vec4 oLight;
+layout(location = 5) out vec4 oFinal;
 
 vec3 ComputeLight(vec3 lightDir, vec3 color)
 {
@@ -145,13 +148,19 @@ void main()
 			break;
 		}
 	}
-	// Final color
-	oFinal = finalColor * vec4(lightColor, 1.0f);
 	// Albedo Texture
-	oColor = texture(uTexture, vTexCoord);
+	oColor = finalColor;
 	// Depth texture
 	float depth = LinearizeDepth(gl_FragCoord.z) / far;
     oDepth = vec4(vec3(depth), 1.0);
+	// Normal texture
+	oNormal = vec4(normalize(vNormal), 1.0);
+	// Position texture
+	oPosition = vec4(vPosition, 1.0);
+	// Light Texture
+	oLight = vec4(lightColor, 1.0f);
+	// Final color
+	oFinal = finalColor * vec4(lightColor, 1.0f);
 }
 
 #endif

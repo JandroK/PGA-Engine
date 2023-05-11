@@ -6,7 +6,7 @@
 
 #include "platform.h"
 #include <glad/glad.h>
-#include <map>
+#include <unordered_map>
 
 typedef glm::vec2  vec2;
 typedef glm::vec3  vec3;
@@ -284,13 +284,15 @@ struct App
     // Frame buffers
     GLuint colorAttachmentTexture;
     GLuint depthAttachmentTexture;
+    GLuint normalAttachmentTexture;
+    GLuint positionAttachmentTexture;
+    GLuint lightAttachmentTexture;
     GLuint finalAttachmentTexture;
     GLuint depthAttachmentHandle;
     GLuint fbo;
 
     // Render Mode
-    //std::vector<std::string> renderModes = {"Diffuse", "Normal", "Position", "Depth", "Final"};
-    std::map< std::string, GLuint> renderModes;
+    std::unordered_map< std::string, GLuint> renderModes;
     std::string currentRenderMode = "Final";
 
     // GlobalParams
