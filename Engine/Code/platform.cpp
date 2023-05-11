@@ -54,18 +54,23 @@ void OnGlfwMouseEvent(GLFWwindow* window, int button, int event, int modifiers)
             switch (button) {
                 case GLFW_MOUSE_BUTTON_RIGHT: app->input.mouseButtons[RIGHT] = BUTTON_PRESS; break;
                 case GLFW_MOUSE_BUTTON_LEFT:  app->input.mouseButtons[LEFT]  = BUTTON_PRESS; break;
+                case GLFW_MOUSE_BUTTON_MIDDLE:  app->input.mouseButtons[MIDDLE]  = BUTTON_PRESS; break;
             } break;
         case GLFW_RELEASE:
             switch (button) {
                 case GLFW_MOUSE_BUTTON_RIGHT: app->input.mouseButtons[RIGHT] = BUTTON_RELEASE; break;
                 case GLFW_MOUSE_BUTTON_LEFT:  app->input.mouseButtons[LEFT]  = BUTTON_RELEASE; break;
+                case GLFW_MOUSE_BUTTON_MIDDLE:  app->input.mouseButtons[MIDDLE]  = BUTTON_RELEASE; break;
             } break;
     }
 }
 
 void OnGlfwScrollEvent(GLFWwindow* window, double xoffset, double yoffset)
 {
-    // Nothing do yet... maybe zoom in/out in the future?
+    // Zoom
+    App* app = (App*)glfwGetWindowUserPointer(window);
+    app->input.scrollDelta.x = xoffset;
+    app->input.scrollDelta.y = yoffset;
 }
 
 void OnGlfwKeyboardEvent(GLFWwindow* window, int key, int scancode, int action, int mods)
@@ -106,6 +111,7 @@ void OnGlfwResizeFramebuffer(GLFWwindow* window, int width, int height)
 {
     App* app = (App*)glfwGetWindowUserPointer(window);
     app->displaySize = vec2(width, height);
+    app->camera.aspectRatio = (float)app->displaySize.x / (float)app->displaySize.y;
 }
 
 void OnGlfwCloseWindow(GLFWwindow* window)

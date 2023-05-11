@@ -31,6 +31,7 @@ typedef double                 f64;
 enum MouseButton {
     LEFT,
     RIGHT,
+    MIDDLE,
     MOUSE_BUTTON_COUNT
 };
 
@@ -53,6 +54,7 @@ enum ButtonState {
 struct Input {
     glm::vec2   mousePos;
     glm::vec2   mouseDelta;
+    glm::vec2   scrollDelta;
     ButtonState mouseButtons[MOUSE_BUTTON_COUNT];
     ButtonState keys[KEY_COUNT];
 };

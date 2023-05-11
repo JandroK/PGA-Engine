@@ -151,6 +151,11 @@ struct Camera
     float sensibility;
     float yaw;
     float pitch;
+
+    float aspectRatio;
+    float zNear;
+    float zFar;
+    float FOV;
 };
 
 struct Transform

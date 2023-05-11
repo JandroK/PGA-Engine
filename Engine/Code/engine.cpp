@@ -316,14 +316,15 @@ void Init(App* app)
 
 void InitCamera(App* app)
 {
-	float aspectRatio = (float)app->displaySize.x / (float)app->displaySize.y;
-	float zNear = 0.1f;
-	float zFar = 1000.0f;
+	app->camera.aspectRatio = (float)app->displaySize.x / (float)app->displaySize.y;
+	app->camera.zNear = 0.1f;
+	app->camera.zFar = 1000.0f;
+	app->camera.FOV = 60.0f;
 
 	app->camera.position = vec3(-20.0f, 10.0f, 5.0f);
 	app->camera.front = glm::normalize(vec3(20.0f, -9.0f, -5.0f));
 	app->camera.up = vec3(0.0f, 1.0f, 0.0f);
-	app->camera.projection = glm::perspective(glm::radians(60.f), aspectRatio, zNear, zFar);
+	app->camera.projection = glm::perspective(glm::radians(app->camera.FOV), app->camera.aspectRatio, app->camera.zNear, app->camera.zFar);
 	app->camera.view = glm::lookAt(app->camera.position, app->camera.position + app->camera.front, app->camera.up);
 
 	app->camera.speed = 15.0f;
@@ -533,6 +534,19 @@ void Update(App* app)
 	// You can handle app->input keyboard/mouse here
 	MoveCamera(app);
 	LookAtCamera(app);
+
+	// Zoom camera (why don't can extrat to function?)
+	if (app->input.scrollDelta.y != 0.0f)
+	{
+		app->camera.FOV -= app->input.scrollDelta.y;
+		if (app->camera.FOV < 1.0f)
+			app->camera.FOV = 1.0f;
+		if (app->camera.FOV > 60.0f)
+			app->camera.FOV = 60;
+
+		app->input.scrollDelta.y = 0.0f;
+		app->camera.projection = glm::perspective(glm::radians(app->camera.FOV), app->camera.aspectRatio, app->camera.zNear, app->camera.zFar);
+	}
 
 	UniformBufferAlignment(app);
 }
