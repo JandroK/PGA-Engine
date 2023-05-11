@@ -288,7 +288,9 @@ void Init(App* app)
 			break;
 		}
 	}
-
+	// Select on which render target to draw
+	GLuint drawBuffers[] = { GL_COLOR_ATTACHMENT0 };
+	glDrawBuffers(ARRAY_COUNT(drawBuffers), drawBuffers);
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
 	// Init Camera
@@ -365,7 +367,7 @@ void InitCamera(App* app)
 {
 	app->camera.aspectRatio = (float)app->displaySize.x / (float)app->displaySize.y;
 	app->camera.zNear = 0.1f;
-	app->camera.zFar = 1000.0f;
+	app->camera.zFar = 100.0f;
 	app->camera.FOV = 60.0f;
 
 	app->camera.position = vec3(-20.0f, 10.0f, 5.0f);
@@ -731,10 +733,6 @@ void Render(App* app)
 
 	// Render on this framebuffer render target
 	glBindFramebuffer(GL_FRAMEBUFFER, app->fbo);
-
-	// Select on which render target to draw
-	GLuint drawBuffers[] = { app->colorAttachmentHandle, app->depthAttachmentHandle };
-	glDrawBuffers(ARRAY_COUNT(drawBuffers), drawBuffers);
 
 	// Clean screen
 	glClearColor(0.1, 0.1, 0.1, 1.0);
