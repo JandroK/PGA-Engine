@@ -144,7 +144,10 @@ struct Camera
     glm::mat4 projection;
     glm::mat4 view;
     glm::vec3 position;
-    glm::vec3 target;
+    glm::vec3 front;
+    glm::vec3 up;
+    float cameraSpeed;
+
 };
 
 struct Transform
@@ -336,7 +339,7 @@ glm::mat4 TransformScale(const glm::mat4 transform, const vec3& scaleFactor);
 
 u8 GetComponentCount(const GLenum& type);
 
-Entity GeneratePrimitive(u32 primitiveIndex, std::string name, float scaleFactor = 1.0f);
+Entity GeneratePrimitive(u32 primitiveIndex, std::string name);
 
 Light InstanceLight(LightType type, std::string name);
 

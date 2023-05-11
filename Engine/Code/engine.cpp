@@ -254,7 +254,7 @@ void Init(App* app)
 	app->primitiveNames = {"Cube", "Sphere", "Cylinder", "Cone", "Torus", "Plane"};
 	for (int i = 0; i < app->primitiveNames.size(); i++)
 	{
-		std::string path = "Primitives/" + app->primitiveNames[i] + ".fbx";
+		std::string path = "Primitives/" + app->primitiveNames[i] + ".obj";
 		app->primitiveIndex.push_back(LoadModel(app, path.c_str()));
 	}
 
@@ -275,7 +275,7 @@ void Init(App* app)
 	}
 
 	// Set up playground
-	Entity playground = GeneratePrimitive(app->primitiveIndex[PrimitiveType::PLANE], "Playground", 10.0f);
+	Entity playground = GeneratePrimitive(app->primitiveIndex[PrimitiveType::PLANE], "Playground");
 	app->entities.push_back(playground);
 
 
@@ -319,10 +319,13 @@ void InitCamera(App* app)
 	float aspectRatio = (float)app->displaySize.x / (float)app->displaySize.y;
 	float zNear = 0.1f;
 	float zFar = 1000.0f;
+
 	app->camera.position = vec3(-20.0f, 10.0f, 5.0f);
-	app->camera.target = vec3(0.0f, 1.0f, 0.0f);
+	app->camera.front = glm::normalize(vec3(20.0f, -9.0f, -5.0f));
+	app->camera.up = vec3(0.0f, 1.0f, 0.0f);
 	app->camera.projection = glm::perspective(glm::radians(60.f), aspectRatio, zNear, zFar);
-	app->camera.view = glm::lookAt(app->camera.position, app->camera.target, vec3(0.0f, 1.0f, 0.0f));
+	app->camera.view = glm::lookAt(app->camera.position, app->camera.position + app->camera.front, app->camera.up);
+	app->camera.cameraSpeed = 10.0f;
 }
 
 void CreateUniformBuffers(App* app)
@@ -464,7 +467,7 @@ void GuiLights(App* app)
 
 			ImGui::Text("Color: ");
 			glm::vec3& color = app->lights[i].color;
-			ImGui::DragFloat3("##Color", &color[0], 0.1f, 0.0f, 1.0f);
+			ImGui::ColorEdit3("##Color", &color[0]);
 		}
 
 		ImGui::PopID();
@@ -524,6 +527,18 @@ std::string GetNewLightName(App* app, std::string& name)
 void Update(App* app)
 {
 	// You can handle app->input keyboard/mouse here
+	if (app->input.keys[K_W] == ButtonState::BUTTON_PRESSED)
+		app->camera.position += app->camera.cameraSpeed * app->deltaTime * app->camera.front;
+	if (app->input.keys[K_S] == ButtonState::BUTTON_PRESSED)
+		app->camera.position -= app->camera.cameraSpeed * app->deltaTime * app->camera.front;
+	if (app->input.keys[K_A] == ButtonState::BUTTON_PRESSED)
+		app->camera.position -= glm::normalize(glm::cross(app->camera.front, app->camera.up)) * app->camera.cameraSpeed * app->deltaTime;
+	if (app->input.keys[K_D] == ButtonState::BUTTON_PRESSED)
+		app->camera.position += glm::normalize(glm::cross(app->camera.front, app->camera.up)) * app->camera.cameraSpeed * app->deltaTime;
+
+	app->camera.view = glm::lookAt(app->camera.position, app->camera.position + app->camera.front, app->camera.up);
+	
+
 	UniformBufferAlignment(app);
 }
 
@@ -764,10 +779,10 @@ u8 GetComponentCount(const GLenum& type)
 }
 
 // Primitives
-Entity GeneratePrimitive(u32 primitiveIndex, std::string name, float scaleFactor)
+Entity GeneratePrimitive(u32 primitiveIndex, std::string name)
 {
 	Entity e;
-	e.transform = Transform(vec3(0.0f, 0.0f, 0.0f), vec3(0.0f, 0.0f, 0.0f), vec3(0.01f, 0.01f, 0.01f) * scaleFactor);
+	e.transform = Transform();
 	e.worldMatrix = TransformConstructor(e.transform);
 	e.modelIndex = primitiveIndex;
 	e.name = name;
