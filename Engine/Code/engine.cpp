@@ -238,11 +238,58 @@ void InicializeGLInfo(App* app)
 
 void Init(App* app)
 {
-	InicializeResources(app);
+	//InicializeResources(app);
 	LoadTextures(app);
 	InicializeGLInfo(app);
 
 	//////////////////////////////////
+
+	// Framebuffers
+	glGenTextures(1, &app->colorAttachmentHandle);
+	glBindTexture(GL_TEXTURE_2D, app->colorAttachmentHandle);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, app->displaySize.x, app->displaySize.y, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+	glBindTexture(GL_TEXTURE_2D, 0);
+
+	glGenTextures(1, &app->depthAttachmentHandle);
+	glBindTexture(GL_TEXTURE_2D, app->depthAttachmentHandle);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT24, app->displaySize.x, app->displaySize.y, 0, GL_DEPTH_COMPONENT, GL_FLOAT, NULL);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+	glBindTexture(GL_TEXTURE_2D, 0);
+
+	glGenFramebuffers(1, &app->fbo);
+	glBindFramebuffer(GL_FRAMEBUFFER, app->fbo);
+	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, app->colorAttachmentHandle, 0);
+	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, app->depthAttachmentHandle, 0);
+
+	GLenum framebufferStatus = glCheckFramebufferStatus(GL_FRAMEBUFFER);
+	if (framebufferStatus != GL_FRAMEBUFFER_COMPLETE)
+	{
+		switch (framebufferStatus)
+		{
+		case GL_FRAMEBUFFER_UNDEFINED:						ELOG("GL_FRAMEBUFFER_UNDEFINED"); break;
+		case GL_FRAMEBUFFER_INCOMPLETE_ATTACHMENT:			ELOG("GL_FRAMEBUFFER_INCOMPLETE_ATTACHMENT"); break;
+		case GL_FRAMEBUFFER_INCOMPLETE_MISSING_ATTACHMENT:	ELOG("GL_FRAMEBUFFER_INCOMPLETE_MISSING_ATTACHMENT"); break;
+		case GL_FRAMEBUFFER_INCOMPLETE_DRAW_BUFFER:			ELOG("GL_FRAMEBUFFER_INCOMPLETE_DRAW_BUFFER"); break;
+		case GL_FRAMEBUFFER_INCOMPLETE_READ_BUFFER:			ELOG("GL_FRAMEBUFFER_INCOMPLETE_READ_BUFFER"); break;
+		case GL_FRAMEBUFFER_UNSUPPORTED:					ELOG("GL_FRAMEBUFFER_UNSUPPORTED"); break;
+		case GL_FRAMEBUFFER_INCOMPLETE_MULTISAMPLE:			ELOG("GL_FRAMEBUFFER_INCOMPLETE_MULTISAMPLE"); break;
+		case GL_FRAMEBUFFER_INCOMPLETE_LAYER_TARGETS:		ELOG("GL_FRAMEBUFFER_INCOMPLETE_LAYER_TARGETS"); break;
+		default:
+			ELOG("Unknow framebuffer status error")
+			break;
+		}
+	}
+
+	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
 	// Init Camera
 	InitCamera(app);
@@ -362,7 +409,22 @@ void Gui(App* app)
 
 	ImGui::End();
 
+	// Scene
+	if (ImGui::Begin("Scene"))
+	{
+		ImVec2 size = ImGui::GetContentRegionAvail();
+		RecalculateProjection(app, glm::vec2(size.x, size.y));
+		ImGui::Image((ImTextureID)app->colorAttachmentHandle, size, ImVec2(0, 1), ImVec2(1, 0));
+	}
+	ImGui::End();
+
 	//ShowOpenGlInfo(app);
+}
+
+void RecalculateProjection(App* app, glm::vec2 size)
+{
+	app->camera.aspectRatio = size.x / size.y;
+	app->camera.projection = glm::perspective(glm::radians(app->camera.FOV), app->camera.aspectRatio, app->camera.zNear, app->camera.zFar);
 }
 
 void GuiPrimitives(App* app)
@@ -561,6 +623,10 @@ void MoveCamera(App* app)
 		app->camera.position -= glm::normalize(glm::cross(app->camera.front, app->camera.up)) * app->camera.speed * app->deltaTime;
 	if (app->input.keys[K_D] == ButtonState::BUTTON_PRESSED)
 		app->camera.position += glm::normalize(glm::cross(app->camera.front, app->camera.up)) * app->camera.speed * app->deltaTime;
+	if (app->input.keys[K_Q] == ButtonState::BUTTON_PRESSED)
+		app->camera.position -= app->camera.speed * app->deltaTime * app->camera.up;
+	if (app->input.keys[K_E] == ButtonState::BUTTON_PRESSED)
+		app->camera.position += app->camera.speed * app->deltaTime * app->camera.up;
 
 	app->camera.view = glm::lookAt(app->camera.position, app->camera.position + app->camera.front, app->camera.up);
 }
@@ -633,6 +699,13 @@ void UniformBufferAlignment(App* app)
 
 void Render(App* app)
 {
+	// Render on this framebuffer render target
+	glBindFramebuffer(GL_FRAMEBUFFER, app->fbo);
+
+	// Select on which render target to draw
+	GLuint drawBuffers[] = { app->colorAttachmentHandle, app->depthAttachmentHandle };
+	glDrawBuffers(ARRAY_COUNT(drawBuffers), drawBuffers);
+
 	// Clean screen
 	glClearColor(0.1, 0.1, 0.1, 1.0);
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -707,6 +780,9 @@ void Render(App* app)
 	default:
 		break;
 	}
+
+	// Render on screen again
+	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 }
 
 GLuint FindVAO(Mesh& mesh, u32 submeshIndex, const Program& program)

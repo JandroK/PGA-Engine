@@ -280,6 +280,11 @@ struct App
     // Uniform Block Alignment
     GLint uniformBufferAlignment;
 
+    // Frame buffers
+    GLuint colorAttachmentHandle;
+    GLuint depthAttachmentHandle;
+    GLuint fbo;
+
     // GlobalParams
     u32 globalParamsSize;
     u32 globalParamsOffset;
@@ -334,6 +339,8 @@ void Update(App* app);
 void MoveCamera(App* app);
 
 void LookAtCamera(App* app);
+
+void RecalculateProjection(App* app, glm::vec2 size);
 
 void UniformBufferAlignment(App* app);
 

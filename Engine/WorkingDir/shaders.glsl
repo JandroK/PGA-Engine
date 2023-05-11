@@ -97,6 +97,7 @@ layout(binding = 0, std140) uniform GlobalParams
 };
 
 layout(location = 0) out vec4 oColor;
+layout(location = 1) out vec4 oDepth;
 
 vec3 ComputeLight(vec3 lightDir, vec3 color)
 {
@@ -135,6 +136,7 @@ void main()
 	}
 
 	oColor = finalColor * vec4(lightColor, 1.0f);
+	oDepth = oColor;
 }
 
 #endif
