@@ -147,7 +147,7 @@ struct Camera
     glm::vec3 front;
     glm::vec3 up;
 
-    float cameraSpeed;
+    float speed;
     float sensibility;
     float yaw;
     float pitch;
@@ -325,6 +325,10 @@ std::string GetNewEntityName(App* app, std::string& name);
 std::string GetNewLightName(App* app, std::string& name);
 
 void Update(App* app);
+
+void MoveCamera(App* app);
+
+void LookAtCamera(App* app);
 
 void UniformBufferAlignment(App* app);
 

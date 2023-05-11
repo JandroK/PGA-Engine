@@ -258,7 +258,7 @@ void Init(App* app)
 		app->primitiveIndex.push_back(LoadModel(app, path.c_str()));
 	}
 
-	u32 modelIndex =				LoadModel(app, "Patrick/patrick.obj"); // "Backpack/backpack.obj"
+	u32 modelIndex = LoadModel(app, "Patrick/patrick.obj"); // "Backpack/backpack.obj"
 
 	// Fill entities array
 	for (size_t i = 0; i < 3; ++i)
@@ -326,10 +326,10 @@ void InitCamera(App* app)
 	app->camera.projection = glm::perspective(glm::radians(60.f), aspectRatio, zNear, zFar);
 	app->camera.view = glm::lookAt(app->camera.position, app->camera.position + app->camera.front, app->camera.up);
 
-	app->camera.cameraSpeed = 10.0f;
-	app->camera.yaw = 0.0f;
-	app->camera.pitch = 0.0f;
-	app->camera.sensibility = 0.1f;
+	app->camera.speed = 15.0f;
+	app->camera.sensibility = 0.15f;
+	app->camera.pitch = glm::degrees(asin(app->camera.front.y));
+	app->camera.yaw = -glm::degrees(acos(app->camera.front.x / cos(glm::radians(app->camera.pitch))));
 }
 
 void CreateUniformBuffers(App* app)
@@ -531,21 +531,32 @@ std::string GetNewLightName(App* app, std::string& name)
 void Update(App* app)
 {
 	// You can handle app->input keyboard/mouse here
+	MoveCamera(app);
+	LookAtCamera(app);
+
+	UniformBufferAlignment(app);
+}
+
+void MoveCamera(App* app)
+{
 	if (app->input.keys[K_W] == ButtonState::BUTTON_PRESSED)
-		app->camera.position += app->camera.cameraSpeed * app->deltaTime * app->camera.front;
+		app->camera.position += app->camera.speed * app->deltaTime * app->camera.front;
 	if (app->input.keys[K_S] == ButtonState::BUTTON_PRESSED)
-		app->camera.position -= app->camera.cameraSpeed * app->deltaTime * app->camera.front;
+		app->camera.position -= app->camera.speed * app->deltaTime * app->camera.front;
 	if (app->input.keys[K_A] == ButtonState::BUTTON_PRESSED)
-		app->camera.position -= glm::normalize(glm::cross(app->camera.front, app->camera.up)) * app->camera.cameraSpeed * app->deltaTime;
+		app->camera.position -= glm::normalize(glm::cross(app->camera.front, app->camera.up)) * app->camera.speed * app->deltaTime;
 	if (app->input.keys[K_D] == ButtonState::BUTTON_PRESSED)
-		app->camera.position += glm::normalize(glm::cross(app->camera.front, app->camera.up)) * app->camera.cameraSpeed * app->deltaTime;
+		app->camera.position += glm::normalize(glm::cross(app->camera.front, app->camera.up)) * app->camera.speed * app->deltaTime;
 
 	app->camera.view = glm::lookAt(app->camera.position, app->camera.position + app->camera.front, app->camera.up);
+}
 
+void LookAtCamera(App* app)
+{
 	if (app->input.mouseButtons[RIGHT] == ButtonState::BUTTON_PRESSED)
 	{
 		app->input.mouseDelta.x *= app->camera.sensibility;
-		app->input.mouseDelta.y *= app->camera.sensibility;
+		app->input.mouseDelta.y *= -app->camera.sensibility;
 
 		app->camera.yaw += app->input.mouseDelta.x;
 		app->camera.pitch += app->input.mouseDelta.y;
@@ -561,9 +572,6 @@ void Update(App* app)
 		direction.z = sin(glm::radians(app->camera.yaw)) * cos(glm::radians(app->camera.pitch));
 		app->camera.front = glm::normalize(direction);
 	}
-	
-
-	UniformBufferAlignment(app);
 }
 
 void UniformBufferAlignment(App* app)
