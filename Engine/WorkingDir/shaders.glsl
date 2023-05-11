@@ -98,12 +98,23 @@ layout(binding = 0, std140) uniform GlobalParams
 
 layout(location = 0) out vec4 oColor;
 layout(location = 1) out vec4 oDepth;
+layout(location = 2) out vec4 oFinal;
 
 vec3 ComputeLight(vec3 lightDir, vec3 color)
 {
 	lightDir = normalize(lightDir);
 	float diff = max(dot(vNormal, lightDir), 0.0f);
 	return vec3(diff) * color;
+}
+
+// Same values of camara parameters
+float near = 0.1; 
+float far  = 100.0; 
+  
+float LinearizeDepth(float depth) 
+{
+    float z = depth * 2.0 - 1.0; // back to NDC 
+    return (2.0 * near * far) / (far + near - z * (far - near));	
 }
 
 void main()
@@ -134,9 +145,13 @@ void main()
 			break;
 		}
 	}
-
-	oColor = finalColor * vec4(lightColor, 1.0f);
-	oDepth = oColor;
+	// Final color
+	oFinal = finalColor * vec4(lightColor, 1.0f);
+	// Albedo Texture
+	oColor = texture(uTexture, vTexCoord);
+	// Depth texture
+	float depth = LinearizeDepth(gl_FragCoord.z) / far;
+    oDepth = vec4(vec3(depth), 1.0);
 }
 
 #endif

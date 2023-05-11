@@ -236,17 +236,11 @@ void InicializeGLInfo(App* app)
 	}
 }
 
-void Init(App* app)
+void GenerateRenderTextures(App* app)
 {
-	//InicializeResources(app);
-	LoadTextures(app);
-	InicializeGLInfo(app);
-
-	//////////////////////////////////
-
-	// Framebuffers
-	glGenTextures(1, &app->colorAttachmentHandle);
-	glBindTexture(GL_TEXTURE_2D, app->colorAttachmentHandle);
+	// Albedo Texture
+	glGenTextures(1, &app->colorAttachmentTexture);
+	glBindTexture(GL_TEXTURE_2D, app->colorAttachmentTexture);
 	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, app->displaySize.x, app->displaySize.y, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
@@ -254,7 +248,33 @@ void Init(App* app)
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 	glBindTexture(GL_TEXTURE_2D, 0);
+	app->renderModes["Color"] = app->colorAttachmentTexture;
 
+	// Depth Texture
+	glGenTextures(1, &app->depthAttachmentTexture);
+	glBindTexture(GL_TEXTURE_2D, app->depthAttachmentTexture);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, app->displaySize.x, app->displaySize.y, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+	glBindTexture(GL_TEXTURE_2D, 0);
+	app->renderModes["Depth"] = app->depthAttachmentTexture;
+
+	// Final Texture
+	glGenTextures(1, &app->finalAttachmentTexture);
+	glBindTexture(GL_TEXTURE_2D, app->finalAttachmentTexture);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, app->displaySize.x, app->displaySize.y, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+	glBindTexture(GL_TEXTURE_2D, 0);
+	app->renderModes["Final"] = app->finalAttachmentTexture;
+
+	// Depth Component
 	glGenTextures(1, &app->depthAttachmentHandle);
 	glBindTexture(GL_TEXTURE_2D, app->depthAttachmentHandle);
 	glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT24, app->displaySize.x, app->displaySize.y, 0, GL_DEPTH_COMPONENT, GL_FLOAT, NULL);
@@ -267,7 +287,9 @@ void Init(App* app)
 
 	glGenFramebuffers(1, &app->fbo);
 	glBindFramebuffer(GL_FRAMEBUFFER, app->fbo);
-	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, app->colorAttachmentHandle, 0);
+	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, app->colorAttachmentTexture, 0);
+	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT1, GL_TEXTURE_2D, app->depthAttachmentTexture, 0);
+	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT2, GL_TEXTURE_2D, app->finalAttachmentTexture, 0);
 	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, app->depthAttachmentHandle, 0);
 
 	GLenum framebufferStatus = glCheckFramebufferStatus(GL_FRAMEBUFFER);
@@ -285,13 +307,25 @@ void Init(App* app)
 		case GL_FRAMEBUFFER_INCOMPLETE_LAYER_TARGETS:		ELOG("GL_FRAMEBUFFER_INCOMPLETE_LAYER_TARGETS"); break;
 		default:
 			ELOG("Unknow framebuffer status error")
-			break;
+				break;
 		}
 	}
 	// Select on which render target to draw
-	GLuint drawBuffers[] = { GL_COLOR_ATTACHMENT0 };
+	GLuint drawBuffers[] = { GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1, GL_COLOR_ATTACHMENT2 };
 	glDrawBuffers(ARRAY_COUNT(drawBuffers), drawBuffers);
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
+}
+
+void Init(App* app)
+{
+	//InicializeResources(app);
+	LoadTextures(app);
+	InicializeGLInfo(app);
+
+	//////////////////////////////////
+
+	// FRAMEBUFFERS
+	GenerateRenderTextures(app);
 
 	// Init Camera
 	InitCamera(app);
@@ -300,7 +334,6 @@ void Init(App* app)
 	CreateUniformBuffers(app);
 
 	// Loading Models
-	app->primitiveNames = {"Cube", "Sphere", "Cylinder", "Cone", "Torus", "Plane"};
 	for (int i = 0; i < app->primitiveNames.size(); i++)
 	{
 		std::string path = "Primitives/" + app->primitiveNames[i] + ".obj";
@@ -431,6 +464,20 @@ void Gui(App* app)
 	GuiPrimitives(app);
 	GuiLightsInstance(app);
 
+	if (ImGui::BeginCombo("##RenderMode", app->currentRenderMode.c_str()))
+	{
+		for (auto it : app->renderModes)
+		{
+			bool isSelected = !app->currentRenderMode.compare(it.first);
+			if (ImGui::Selectable(it.first.c_str(), isSelected))
+				app->currentRenderMode = it.first;
+			if (isSelected)
+				ImGui::SetItemDefaultFocus();
+		}
+		ImGui::Separator();
+		ImGui::EndCombo();
+	}
+
 	ImGui::NewLine();
 
 	GuiEntities(app);
@@ -443,7 +490,7 @@ void Gui(App* app)
 	{
 		ImVec2 size = ImGui::GetContentRegionAvail();
 		RecalculateProjection(app, glm::vec2(size.x, size.y));
-		ImGui::Image((ImTextureID)app->colorAttachmentHandle, size, ImVec2(0, 1), ImVec2(1, 0));
+		ImGui::Image((ImTextureID)app->renderModes[app->currentRenderMode], size, ImVec2(0, 1), ImVec2(1, 0));
 	}
 	ImGui::End();
 

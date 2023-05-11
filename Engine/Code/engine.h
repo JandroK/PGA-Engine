@@ -6,6 +6,7 @@
 
 #include "platform.h"
 #include <glad/glad.h>
+#include <map>
 
 typedef glm::vec2  vec2;
 typedef glm::vec3  vec3;
@@ -281,9 +282,16 @@ struct App
     GLint uniformBufferAlignment;
 
     // Frame buffers
-    GLuint colorAttachmentHandle;
+    GLuint colorAttachmentTexture;
+    GLuint depthAttachmentTexture;
+    GLuint finalAttachmentTexture;
     GLuint depthAttachmentHandle;
     GLuint fbo;
+
+    // Render Mode
+    //std::vector<std::string> renderModes = {"Diffuse", "Normal", "Position", "Depth", "Final"};
+    std::map< std::string, GLuint> renderModes;
+    std::string currentRenderMode = "Final";
 
     // GlobalParams
     u32 globalParamsSize;
@@ -303,10 +311,12 @@ struct App
 
     // PrimitiveIndex
     std::vector<u32> primitiveIndex;
-    std::vector<std::string> primitiveNames;
+    std::vector<std::string> primitiveNames = { "Cube", "Sphere", "Cylinder", "Cone", "Torus", "Plane" };
 };
 
 void Init(App* app);
+
+void GenerateRenderTextures(App* app);
 
 void CreateUniformBuffers(App* app);
 
