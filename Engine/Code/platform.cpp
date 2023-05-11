@@ -214,8 +214,10 @@ int main()
         // ImGui
         ImGui_ImplOpenGL3_NewFrame();
         ImGui_ImplGlfw_NewFrame();
+
         ImGui::NewFrame();
         Gui(&app);
+        ImGui::EndFrame();
         ImGui::Render();
 
         // Clear input state if required by ImGui

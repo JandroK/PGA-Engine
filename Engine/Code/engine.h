@@ -318,6 +318,8 @@ void LoadTextures(App* app);
 
 void InicializeResources(App* app);
 
+void CreateDocking();
+
 void Gui(App* app);
 
 void GuiPrimitives(App* app);

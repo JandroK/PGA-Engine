@@ -390,8 +390,35 @@ void CreateUniformBuffers(App* app)
 	app->uniformBuffer = CreateConstantBuffer(maxUniformBufferSize);
 }
 
+void CreateDocking()
+{
+	// DockSpace
+	static bool dockOpen = true;
+	ImGuiViewport* viewport = ImGui::GetMainViewport();
+	ImGui::SetNextWindowPos(viewport->GetWorkPos());
+	ImGui::SetNextWindowSize(viewport->GetWorkSize());
+
+	ImGuiWindowFlags host_window_flags = 0;
+	host_window_flags |= ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoDocking;
+	host_window_flags |= ImGuiWindowFlags_NoBringToFrontOnFocus | ImGuiWindowFlags_NoNavFocus | ImGuiWindowFlags_NoBackground;
+
+	ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 10.0f);
+	ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 1.0f);
+	ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.5f, 0.5f));
+	ImGui::Begin("DockSpace", &dockOpen, host_window_flags);
+	ImGui::PopStyleVar(3);
+
+	ImGuiID dockspaceId = ImGui::GetID("MyDockSpace");
+	ImGui::DockSpace(dockspaceId, ImVec2(0.0f, 0.0f), ImGuiDockNodeFlags_PassthruCentralNode);
+	ImGui::End();
+}
+
 void Gui(App* app)
 {
+	// Docking
+	CreateDocking();
+
+	// Info
 	ImGui::Begin("Info");
 	ImGui::Text("FPS: %f", 1.0f / app->deltaTime);
 	ImGui::End();
@@ -699,6 +726,9 @@ void UniformBufferAlignment(App* app)
 
 void Render(App* app)
 {
+	// Auxiliar clear to fix ImGui bug tabs loop draw
+	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
 	// Render on this framebuffer render target
 	glBindFramebuffer(GL_FRAMEBUFFER, app->fbo);
 
