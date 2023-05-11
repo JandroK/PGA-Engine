@@ -325,7 +325,11 @@ void InitCamera(App* app)
 	app->camera.up = vec3(0.0f, 1.0f, 0.0f);
 	app->camera.projection = glm::perspective(glm::radians(60.f), aspectRatio, zNear, zFar);
 	app->camera.view = glm::lookAt(app->camera.position, app->camera.position + app->camera.front, app->camera.up);
+
 	app->camera.cameraSpeed = 10.0f;
+	app->camera.yaw = 0.0f;
+	app->camera.pitch = 0.0f;
+	app->camera.sensibility = 0.1f;
 }
 
 void CreateUniformBuffers(App* app)
@@ -537,6 +541,26 @@ void Update(App* app)
 		app->camera.position += glm::normalize(glm::cross(app->camera.front, app->camera.up)) * app->camera.cameraSpeed * app->deltaTime;
 
 	app->camera.view = glm::lookAt(app->camera.position, app->camera.position + app->camera.front, app->camera.up);
+
+	if (app->input.mouseButtons[RIGHT] == ButtonState::BUTTON_PRESSED)
+	{
+		app->input.mouseDelta.x *= app->camera.sensibility;
+		app->input.mouseDelta.y *= app->camera.sensibility;
+
+		app->camera.yaw += app->input.mouseDelta.x;
+		app->camera.pitch += app->input.mouseDelta.y;
+
+		if (app->camera.pitch > 89.0f)
+			app->camera.pitch = 89.0f;
+		if (app->camera.pitch < -89.0f)
+			app->camera.pitch = -89.0f;
+
+		glm::vec3 direction;
+		direction.x = cos(glm::radians(app->camera.yaw)) * cos(glm::radians(app->camera.pitch));
+		direction.y = sin(glm::radians(app->camera.pitch));
+		direction.z = sin(glm::radians(app->camera.yaw)) * cos(glm::radians(app->camera.pitch));
+		app->camera.front = glm::normalize(direction);
+	}
 	
 
 	UniformBufferAlignment(app);

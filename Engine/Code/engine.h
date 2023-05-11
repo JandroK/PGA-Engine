@@ -146,8 +146,11 @@ struct Camera
     glm::vec3 position;
     glm::vec3 front;
     glm::vec3 up;
-    float cameraSpeed;
 
+    float cameraSpeed;
+    float sensibility;
+    float yaw;
+    float pitch;
 };
 
 struct Transform
