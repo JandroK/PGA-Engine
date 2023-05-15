@@ -120,7 +120,8 @@ struct Buffer
 enum Mode
 {
     TEXTURED_QUAD,  // To render UI (maybe)
-    MESH,          // To render meshes
+    FORWARD,        // To render meshes
+    DEFERRED,
 
     COUNT          // Number of Modes [MAX_MODE]
 };
@@ -254,6 +255,7 @@ struct App
 
     // program indices
     u32 texturedGeometryProgramIdx;
+    u32 texturedLightingProgramIdx;
     
     // texture indices
     u32 whiteTexIdx;
@@ -271,9 +273,13 @@ struct App
 
     // Location of the texture uniform in the textured quad shader
     GLuint programUniformTexture;
+    GLint uGAlbedo;
+    GLint uGPosition;
+    GLint uGNormal;
 
     // VAO object to link our screen filling quad with our textured quad shader
     GLuint vao;
+    unsigned int quadVAO = 0;
 
     // Buffer handle
     Buffer uniformBuffer;
@@ -281,15 +287,16 @@ struct App
     // Uniform Block Alignment
     GLint uniformBufferAlignment;
 
-    // Frame buffers
+    // Color attachments
     GLuint colorAttachmentTexture;
     GLuint depthAttachmentTexture;
     GLuint normalAttachmentTexture;
     GLuint positionAttachmentTexture;
-    GLuint lightAttachmentTexture;
     GLuint finalAttachmentTexture;
-    GLuint depthAttachmentHandle;
-    GLuint fbo;
+
+    // Frame buffers
+    GLuint gBuffer;
+    GLuint lightBuffer;
 
     // Render Mode
     std::unordered_map< std::string, GLuint> renderModes;
@@ -320,7 +327,11 @@ void Init(App* app);
 
 void GenerateRenderTextures(App* app);
 
+void CheckFrameBufferStatus();
+
 void CreateUniformBuffers(App* app);
+
+void LoadShader(App* app, u32 index);
 
 void InitCamera(App* app);
 
@@ -359,6 +370,8 @@ void RecalculateProjection(App* app, glm::vec2 size);
 void UniformBufferAlignment(App* app);
 
 void Render(App* app);
+
+void RenderQuad(App* app);
 
 u32 LoadTexture2D(App* app, const char* filepath);
 

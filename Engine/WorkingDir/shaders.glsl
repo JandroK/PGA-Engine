@@ -34,15 +34,7 @@ void main()
 ///////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////
 
-#ifdef SHOW_TEXTURED_MESH
-
-struct Light
-{
-    unsigned int type;
-    vec3         color;
-    vec3         direction;
-    vec3         position;
-};
+#ifdef SHOW_GEOMETRY_PASS
 
 #if defined(VERTEX) ///////////////////////////////////////////////////
 
@@ -51,13 +43,6 @@ layout(location = 1) in vec3 aNormal;
 layout(location = 2) in vec2 aTexCoord;
 //layout(location = 3) in vec3 aTangent;
 //layout(location = 4) in vec3 aBitangent;
-
-layout(binding = 0, std140) uniform GlobalParams
-{
-	vec3 			uCameraPosition;
-	unsigned int 	uLightCount;
-	Light 			uLight[16];
-};
 
 layout(binding = 1, std140) uniform LocalParams
 {
@@ -68,7 +53,6 @@ layout(binding = 1, std140) uniform LocalParams
 out vec2 vTexCoord;
 out vec3 vPosition;	// In worldspace
 out vec3 vNormal;	// In worldspace
-out vec3 vViewDir;
 
 void main()
 {
@@ -76,7 +60,6 @@ void main()
 
 	vPosition = vec3(uWorldMatrix * vec4(aPosition, 1.0));
 	vNormal   = vec3(uWorldMatrix * vec4(aNormal, 0.0));
-	vViewDir  = uCameraPosition - vPosition;
 	gl_Position = uWorldViewProjectionMatrix * vec4(aPosition, 1.0);
 }
 
@@ -85,30 +68,13 @@ void main()
 in vec2 vTexCoord;
 in vec3 vPosition;
 in vec3 vNormal;
-in vec3 vViewDir;
 
 uniform sampler2D uTexture;
-
-layout(binding = 0, std140) uniform GlobalParams
-{
-	vec3 			uCameraPosition;
-	unsigned int 	uLightCount;
-	Light 			uLight[16];
-};
 
 layout(location = 0) out vec4 oColor;
 layout(location = 1) out vec4 oDepth;
 layout(location = 2) out vec4 oNormal;
 layout(location = 3) out vec4 oPosition;
-layout(location = 4) out vec4 oLight;
-layout(location = 5) out vec4 oFinal;
-
-vec3 ComputeLight(vec3 lightDir, vec3 color)
-{
-	lightDir = normalize(lightDir);
-	float diff = max(dot(vNormal, lightDir), 0.0f);
-	return vec3(diff) * color;
-}
 
 // Same values of camara parameters
 float near = 0.1; 
@@ -122,8 +88,82 @@ float LinearizeDepth(float depth)
 
 void main()
 {
-	// finalColor = texture color
-	vec4 finalColor = texture(uTexture, vTexCoord);
+	// Albedo Texture
+	oColor = texture(uTexture, vTexCoord);
+	// Depth texture
+	float depth = LinearizeDepth(gl_FragCoord.z) / far;
+    oDepth = vec4(vec3(depth), 1.0);
+	// Normal texture
+	oNormal = vec4(normalize(vNormal), 1.0);
+	// Position texture
+	oPosition = vec4(vPosition, 1.0);
+}
+
+#endif
+#endif
+
+#ifdef SHOW_LIGHTING_PASS
+
+struct Light
+{
+    unsigned int type;
+    vec3         color;
+    vec3         direction;
+    vec3         position;
+};
+
+#if defined(VERTEX) ///////////////////////////////////////////////////
+
+layout(location = 0) in vec3 aPosition;
+layout(location = 1) in vec2 aTexCoord;
+//layout(location = 3) in vec3 aTangent;
+//layout(location = 4) in vec3 aBitangent;
+
+layout(binding = 0, std140) uniform GlobalParams
+{
+	vec3 			uCameraPosition;
+	unsigned int 	uLightCount;
+	Light 			uLight[16];
+};
+
+out vec2 vTexCoord;
+
+void main()
+{
+	vTexCoord = aTexCoord;
+	gl_Position = vec4(aPosition, 1.0);
+}
+
+#elif defined(FRAGMENT) ///////////////////////////////////////////////
+
+in vec2 vTexCoord;
+
+uniform sampler2D uGAlbedo;
+uniform sampler2D uGPosition;
+uniform sampler2D uGNormal;
+
+layout(location = 0) out vec4 oFinal;
+
+layout(binding = 0, std140) uniform GlobalParams
+{
+	vec3 			uCameraPosition;
+	unsigned int 	uLightCount;
+	Light 			uLight[16];
+};
+
+vec3 ComputeLight(vec3 lightDir, vec3 color, vec3 Normal)
+{
+	lightDir = normalize(lightDir);
+	float diff = max(dot(Normal, lightDir), 0.0f);
+	return vec3(diff) * color;
+}
+
+void main()
+{
+	 // retrieve data from G-buffer
+    vec3 Albedo = texture(uGAlbedo, vTexCoord).rgb;
+    vec3 FragPos = texture(uGPosition, vTexCoord).rgb;
+    vec3 Normal = texture(uGNormal, vTexCoord).rgb;
 
 	// lightColor = the sum of all light, if there aren't any,
 	// complete darkness = vec(0.0f);
@@ -136,31 +176,21 @@ void main()
 			// Directional Light
 			case 0:
 			{
-				lightColor += ComputeLight(uLight[i].direction, uLight[i].color);
+				lightColor += ComputeLight(uLight[i].direction, uLight[i].color, Normal) * Albedo;
 			}
 			break;
 			// Point Light
 			case 1:
 			{
-				vec3 lightDir = uLight[i].position - vPosition;
-				lightColor += ComputeLight(lightDir, uLight[i].color);
+				vec3 lightDir = uLight[i].position - FragPos;
+				lightColor += ComputeLight(lightDir, uLight[i].color, Normal) * Albedo;
 			}
 			break;
 		}
 	}
-	// Albedo Texture
-	oColor = finalColor;
-	// Depth texture
-	float depth = LinearizeDepth(gl_FragCoord.z) / far;
-    oDepth = vec4(vec3(depth), 1.0);
-	// Normal texture
-	oNormal = vec4(normalize(vNormal), 1.0);
-	// Position texture
-	oPosition = vec4(vPosition, 1.0);
-	// Light Texture
-	oLight = vec4(lightColor, 1.0f);
+
 	// Final color
-	oFinal = finalColor * vec4(lightColor, 1.0f);
+	oFinal = vec4(lightColor, 1.0f);
 }
 
 #endif
