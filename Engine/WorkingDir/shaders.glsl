@@ -160,10 +160,11 @@ vec3 ComputeLight(vec3 lightDir, vec3 color, vec3 Normal)
 
 void main()
 {
-	 // retrieve data from G-buffer
+	// Retrieve data from G-buffer
     vec3 Albedo = texture(uGAlbedo, vTexCoord).rgb;
     vec3 FragPos = texture(uGPosition, vTexCoord).rgb;
     vec3 Normal = texture(uGNormal, vTexCoord).rgb;
+	float alpha = texture(uGAlbedo, vTexCoord).a;
 
 	// lightColor = the sum of all light, if there aren't any,
 	// complete darkness = vec(0.0f);
@@ -190,7 +191,10 @@ void main()
 	}
 
 	// Final color
-	oFinal = vec4(lightColor, 1.0f);
+	if(alpha == 0.0)
+		discard;
+	else
+		oFinal = vec4(lightColor, 1.0f);
 }
 
 #endif

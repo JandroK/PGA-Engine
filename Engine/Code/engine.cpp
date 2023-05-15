@@ -364,7 +364,7 @@ void CheckFrameBufferStatus()
 
 void Init(App* app)
 {
-	//InicializeResources(app);
+	InicializeResources(app);
 	LoadTextures(app);
 	InicializeGLInfo(app);
 
@@ -832,7 +832,7 @@ void UniformBufferAlignment(App* app)
 void Render(App* app)
 {
 	// Clean screen
-	glClearColor(0.1, 0.1, 0.1, 1.0);
+	glClearColor(0.1, 0.1, 0.1, 0.);
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
 	// Indicate to OpneGL the screen size in the current frame
@@ -962,7 +962,9 @@ void Render(App* app)
 		// Indicate which shader we are going to use
 		Program& programTexturedLighting = app->programs[app->texturedLightingProgramIdx];
 		glUseProgram(programTexturedLighting.handle);
+		glBindVertexArray(app->vao);
 
+		// Bind textures
 		glUniform1i(app->uGAlbedo, 0);
 		glUniform1i(app->uGPosition, 1);
 		glUniform1i(app->uGNormal, 2);
@@ -976,16 +978,20 @@ void Render(App* app)
 		glActiveTexture(GL_TEXTURE2);
 		glBindTexture(GL_TEXTURE_2D, app->normalAttachmentTexture);
 
+		// Send Uniforms
 		glBindBufferRange(GL_UNIFORM_BUFFER, BINDING(0), app->uniformBuffer.handle, app->globalParamsOffset, app->globalParamsSize);
-		RenderQuad(app);
+
+		// Draw
+		glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_SHORT, 0);
+		glBindVertexArray(0);
 
 		glBindFramebuffer(GL_READ_FRAMEBUFFER, app->gBuffer);
 		glBindFramebuffer(GL_DRAW_FRAMEBUFFER, app->lightBuffer);
 
 		glBlitFramebuffer(0, 0, app->displaySize.x, app->displaySize.x, 0, 0, app->displaySize.x, app->displaySize.x, GL_DEPTH_BUFFER_BIT, GL_NEAREST);
 
-		glUseProgram(0);
 		// Render on screen again
+		glUseProgram(0);
 		glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
 		break;
