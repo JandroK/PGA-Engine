@@ -72,9 +72,9 @@ in vec3 vNormal;
 uniform sampler2D uTexture;
 
 layout(location = 0) out vec4 oColor;
-layout(location = 1) out vec4 oDepth;
+layout(location = 1) out vec4 oPosition;
 layout(location = 2) out vec4 oNormal;
-layout(location = 3) out vec4 oPosition;
+layout(location = 3) out vec4 oDepth;
 
 // Same values of camara parameters
 float near = 0.1; 
@@ -90,13 +90,13 @@ void main()
 {
 	// Albedo Texture
 	oColor = texture(uTexture, vTexCoord);
+	// Position texture
+	oPosition = vec4(vPosition, 1.0);
+	// Normal texture
+	oNormal = vec4(normalize(vNormal), 1.0);
 	// Depth texture
 	float depth = LinearizeDepth(gl_FragCoord.z) / far;
     oDepth = vec4(vec3(depth), 1.0);
-	// Normal texture
-	oNormal = vec4(normalize(vNormal), 1.0);
-	// Position texture
-	oPosition = vec4(vPosition, 1.0);
 }
 
 #endif
