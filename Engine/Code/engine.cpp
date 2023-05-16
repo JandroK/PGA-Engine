@@ -385,8 +385,8 @@ void Init(App* app)
 		std::string path = "Primitives/" + app->primitiveNames[i] + ".obj";
 		app->primitiveIndex.push_back(LoadModel(app, path.c_str()));
 	}
-
 	u32 modelIndex = LoadModel(app, "Patrick/patrick.obj"); // "Backpack/backpack.obj"
+	app->sphereIndex = app->primitiveIndex[1];
 
 	// Fill entities array
 	for (size_t i = 0; i < 3; ++i)
@@ -421,6 +421,11 @@ void Init(App* app)
 	app->uGAlbedo = glGetUniformLocation(app->programs[app->texturedLightingProgramIdx].handle, "uGAlbedo");
 	app->uGPosition = glGetUniformLocation(app->programs[app->texturedLightingProgramIdx].handle, "uGPosition");
 	app->uGNormal = glGetUniformLocation(app->programs[app->texturedLightingProgramIdx].handle, "uGNormal");
+
+	app->debugLightsProgramIdx = LoadProgram(app, "shaders.glsl", "SHOW_LIGHT_DEBUG");
+	LoadShader(app, app->debugLightsProgramIdx);
+	app->uWorldViewProjection = glGetUniformLocation(app->programs[app->debugLightsProgramIdx].handle, "worldViewProjection");
+	app->uDebugLightColor = glGetUniformLocation(app->programs[app->debugLightsProgramIdx].handle, "uLightColor");
 
 	app->mode = DEFERRED;
 }
@@ -962,35 +967,37 @@ void Render(App* app)
 		// Indicate which shader we are going to use
 		Program& programTexturedLighting = app->programs[app->texturedLightingProgramIdx];
 		glUseProgram(programTexturedLighting.handle);
-		glBindVertexArray(app->vao);
 
-		// Bind textures
-		glUniform1i(app->uGAlbedo, 0);
-		glUniform1i(app->uGPosition, 1);
-		glUniform1i(app->uGNormal, 2);
-
-		glActiveTexture(GL_TEXTURE0);
-		glBindTexture(GL_TEXTURE_2D, app->colorAttachmentTexture);
-
-		glActiveTexture(GL_TEXTURE1);
-		glBindTexture(GL_TEXTURE_2D, app->positionAttachmentTexture);
-
-		glActiveTexture(GL_TEXTURE2);
-		glBindTexture(GL_TEXTURE_2D, app->normalAttachmentTexture);
-
-		// Send Uniforms
-		glBindBufferRange(GL_UNIFORM_BUFFER, BINDING(0), app->uniformBuffer.handle, app->globalParamsOffset, app->globalParamsSize);
-
-		// Draw
-		glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_SHORT, 0);
-		glBindVertexArray(0);
+		RenderQuad(app);
 
 		glBindFramebuffer(GL_READ_FRAMEBUFFER, app->gBuffer);
 		glBindFramebuffer(GL_DRAW_FRAMEBUFFER, app->lightBuffer);
 
 		glBlitFramebuffer(0, 0, app->displaySize.x, app->displaySize.x, 0, 0, app->displaySize.x, app->displaySize.x, GL_DEPTH_BUFFER_BIT, GL_NEAREST);
+		glUseProgram(0);
 
-		// Render on screen again
+		///////////////////////////////////////////////// Debug lights ////////////////////////////////////////
+		Program& programDebugLighting = app->programs[app->debugLightsProgramIdx];
+		glUseProgram(programDebugLighting.handle);
+
+		for (Light it : app->lights)
+		{
+			Mesh& mesh = app->meshes[app->models[app->sphereIndex].meshIdx];
+			GLuint vao = FindVAO(mesh, 0, programDebugLighting);
+
+			glm::mat4 model = glm::mat4(1.0f);
+			model = glm::translate(model, it.position);
+			model = glm::scale(model, glm::vec3(0.5f));
+			model = app->camera.projection * app->camera.view * model;
+
+			glBindVertexArray(vao);
+			glUniformMatrix4fv(app->uWorldViewProjection, 1, GL_FALSE, &model[0][0]);
+			glUniform3f(app->uDebugLightColor, it.color.r, it.color.g, it.color.b);
+
+			glDrawElements(GL_TRIANGLES, mesh.submeshes[0].indices.size(), GL_UNSIGNED_INT, 0);
+			glBindVertexArray(0);
+		}
+
 		glUseProgram(0);
 		glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
@@ -1003,31 +1010,27 @@ void Render(App* app)
 
 void RenderQuad(App* app)
 {
-	if (app->quadVAO == 0)
-	{
-		float quadVertices[] = {
-			// positions        // texture Coords
-			-1.0f,  1.0f, 0.0f, 0.0f, 1.0f,
-			-1.0f, -1.0f, 0.0f, 0.0f, 0.0f,
-			 1.0f,  1.0f, 0.0f, 1.0f, 1.0f,
-			 1.0f, -1.0f, 0.0f, 1.0f, 0.0f,
-		};
-		// setup plane VAO
-		glGenVertexArrays(1, &app->quadVAO);
-		glGenBuffers(1, &app->quadVAO);
+	glBindVertexArray(app->vao);
 
-		glBindVertexArray(app->quadVAO);
-		glBindBuffer(GL_ARRAY_BUFFER, app->quadVAO);
-		glBufferData(GL_ARRAY_BUFFER, sizeof(quadVertices), &quadVertices, GL_STATIC_DRAW);
+	// Bind textures
+	glUniform1i(app->uGAlbedo, 0);
+	glUniform1i(app->uGPosition, 1);
+	glUniform1i(app->uGNormal, 2);
 
-		glEnableVertexAttribArray(0);
-		glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)0);
-		glEnableVertexAttribArray(1);
-		glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)(3 * sizeof(float)));
-	}
+	glActiveTexture(GL_TEXTURE0);
+	glBindTexture(GL_TEXTURE_2D, app->colorAttachmentTexture);
 
-	glBindVertexArray(app->quadVAO);
-	glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+	glActiveTexture(GL_TEXTURE1);
+	glBindTexture(GL_TEXTURE_2D, app->positionAttachmentTexture);
+
+	glActiveTexture(GL_TEXTURE2);
+	glBindTexture(GL_TEXTURE_2D, app->normalAttachmentTexture);
+
+	// Send Uniforms
+	glBindBufferRange(GL_UNIFORM_BUFFER, BINDING(0), app->uniformBuffer.handle, app->globalParamsOffset, app->globalParamsSize);
+
+	// Draw
+	glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_SHORT, 0);
 	glBindVertexArray(0);
 }
 

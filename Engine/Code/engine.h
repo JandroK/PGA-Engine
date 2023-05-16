@@ -256,6 +256,7 @@ struct App
     // program indices
     u32 texturedGeometryProgramIdx;
     u32 texturedLightingProgramIdx;
+    u32 debugLightsProgramIdx;
     
     // texture indices
     u32 whiteTexIdx;
@@ -276,6 +277,8 @@ struct App
     GLint uGAlbedo;
     GLint uGPosition;
     GLint uGNormal;
+    GLint uWorldViewProjection;
+    GLint uDebugLightColor;
 
     // VAO object to link our screen filling quad with our textured quad shader
     GLuint vao;
@@ -322,6 +325,7 @@ struct App
     u32 quadIndex;
     std::vector<u32> primitiveIndex;
     std::vector<std::string> primitiveNames = { "Cube", "Sphere", "Cylinder", "Cone", "Torus", "Plane" };
+    u32 sphereIndex;
 };
 
 void Init(App* app);

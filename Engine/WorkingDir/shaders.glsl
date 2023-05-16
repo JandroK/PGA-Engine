@@ -200,6 +200,31 @@ void main()
 #endif
 #endif
 
+#ifdef SHOW_LIGHT_DEBUG
+
+#if defined(VERTEX) ///////////////////////////////////////////////////
+
+layout (location = 0) in vec3 aPosition;
+uniform mat4 worldViewProjection;
+
+void main()
+{
+	gl_Position = worldViewProjection * vec4(aPosition, 1.0);
+}
+
+#elif defined(FRAGMENT) ///////////////////////////////////////////////
+
+layout(location=0) out vec4 oColor;
+uniform vec3 uLightColor;
+
+void main()
+{
+	oColor = vec4(vec3(uLightColor), 1.0);
+}
+
+#endif
+#endif
+
 
 // NOTE: You can write several shaders in the same file if you want as
 // long as you embrace them within an #ifdef block (as you can see above).
