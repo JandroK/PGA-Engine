@@ -193,12 +193,14 @@ enum LightType
 
 struct Light
 {
-    Light(vec3 pos = vec3(0.0f), vec3 dir = vec3(1.0f), vec3 col = vec3(1.0f), LightType t = LightType::POINT_LIGHT, std::string n = "PointLight")
+    Light(vec3 pos = vec3(0.0f), vec3 dir = vec3(1.0f), vec3 col = vec3(1.0f), LightType t = LightType::POINT_LIGHT, float r = 10.0f, float i = 1.0f, std::string n = "PointLight")
     {
         position = pos;
         direction = dir;
         color = col;
         type = t;
+        radius = r;
+        intensity = i;
         name = n;
     }
 
@@ -206,6 +208,8 @@ struct Light
     vec3        color;
     vec3        direction;
     vec3        position;
+    float 		radius;
+    float       intensity;
 
     std::string name;
 };

@@ -424,13 +424,37 @@ void Init(App* app)
 	app->entities.push_back(e);
 
 	// Create light
-	app->lights.push_back(InstanceLight(DIRECTIONAL_LIGHT,  "Directional Light"));
+	Light lDir = InstanceLight(DIRECTIONAL_LIGHT, "Directional Light 0");
+	lDir.color = glm::normalize(vec3(98.0f, 128.0f, 160.0f));
+	app->lights.push_back(lDir);
+
+	lDir.name = "Directional Light 1";
+	lDir.direction = vec3(0.0f, -1.0f, 0.0f);
+	app->lights.push_back(lDir);
 
 	Light l = InstanceLight(POINT_LIGHT, "Point Light 0");
-	l.position = vec3(6.6f, 19.5f, 11.2f);
+	l.color = glm::normalize(vec3(254.0f, 101.0f, 53.0f));
+	l.position = vec3(6.6f, 18.8f, 11.2f);
 	app->lights.push_back(l);
-	l = InstanceLight(POINT_LIGHT, "Point Light 1");
-	l.position = vec3(-8.6f, 20.6f, 11.2f);
+
+	l.name = "Point Light 1";
+	l.position = vec3(-8.6f, 19.7f, 11.2f);
+	app->lights.push_back(l);
+
+	l.name = "Point Light 2";
+	l.position = vec3(5.0f, 9.7f, 9.8f);
+	app->lights.push_back(l);
+
+	l.name = "Point Light 3";
+	l.position = vec3(-7.1f, 9.7f, 9.8f);
+	app->lights.push_back(l);
+
+	l.name = "Point Light 4";
+	l.position = vec3(6.3f, 19.2f, -12.1f);
+	app->lights.push_back(l);
+
+	l.name = "Point Light 5";
+	l.position = vec3(-8.2f, 18.2f, -12.1f);
 	app->lights.push_back(l);
 
 	// Load programs
@@ -486,8 +510,8 @@ void InitCamera(App* app)
 	app->camera.zFar = 100.0f;
 	app->camera.FOV = 60.0f;
 
-	app->camera.position = vec3(20.0f, 15.0f, 35.0f);
-	app->camera.front = glm::normalize(vec3(-20.0f, -2.0f, -35.0f));
+	app->camera.position = vec3(25.0f, 15.0f, 30.0f);
+	app->camera.front = glm::normalize(vec3(-25.0f, -2.0f, -30.0f));
 	app->camera.up = vec3(0.0f, 1.0f, 0.0f);
 	app->camera.projection = glm::perspective(glm::radians(app->camera.FOV), app->camera.aspectRatio, app->camera.zNear, app->camera.zFar);
 	app->camera.view = glm::lookAt(app->camera.position, app->camera.position + app->camera.front, app->camera.up);
@@ -684,7 +708,9 @@ void GuiLights(App* app)
 			{
 				ImGui::Text("Position: ");
 				glm::vec3& pos = app->lights[i].position;
-				ImGui::DragFloat3("##Position", &pos[0], 0.1f, true);
+				ImGui::DragFloat3("##Position", &pos[0],                   0.1f, true);
+				ImGui::DragFloat("##Radius",    &app->lights[i].radius,    0.1f, 0.00001f, 1000000.0f);
+				ImGui::DragFloat("##Intensity", &app->lights[i].intensity, 0.1f, 0.00001f, 1.0f);
 			}
 			break;
 			default:
@@ -830,10 +856,12 @@ void UniformBufferAlignment(App* app)
 		AlignHead(app->uniformBuffer, sizeof(vec4));
 
 		Light& light = app->lights[i];
-		PushUInt(app->uniformBuffer, light.type);
-		PushVec3(app->uniformBuffer, light.color);
-		PushVec3(app->uniformBuffer, light.direction);
-		PushVec3(app->uniformBuffer, light.position);
+		PushUInt(app->uniformBuffer,  light.type);
+		PushVec3(app->uniformBuffer,  light.color);
+		PushVec3(app->uniformBuffer,  light.direction);
+		PushVec3(app->uniformBuffer,  light.position);
+		PushFloat(app->uniformBuffer, light.radius);
+		PushFloat(app->uniformBuffer, light.intensity);
 	}
 
 	app->globalParamsSize = app->uniformBuffer.head - app->globalParamsOffset;
@@ -1190,10 +1218,10 @@ Light InstanceLight(LightType type, std::string name)
 	switch (type)
 	{
 	case DIRECTIONAL_LIGHT:
-		return Light(vec3(0.0f),			 vec3(-1.0f), vec3(1.0f), DIRECTIONAL_LIGHT, name);
+		return Light(vec3(0.0f),			 vec3(-1.0f), vec3(1.0f), DIRECTIONAL_LIGHT, 10.0f, 1.0f, name);
 		break;
 	case POINT_LIGHT:
-		return Light(vec3(0.0f, 5.0f, 0.0f), vec3(1.0f),  vec3(1.0f), POINT_LIGHT,		 name);
+		return Light(vec3(0.0f, 5.0f, 0.0f), vec3(1.0f),  vec3(1.0f), POINT_LIGHT,       14.0f, 1.0f, name);
 		break;
 	default:
 		break;

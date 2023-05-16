@@ -110,6 +110,8 @@ struct Light
     vec3         color;
     vec3         direction;
     vec3         position;
+	float 		 radius;
+	float        intensity;
 };
 
 #if defined(VERTEX) ///////////////////////////////////////////////////
@@ -151,11 +153,22 @@ layout(binding = 0, std140) uniform GlobalParams
 	Light 			uLight[16];
 };
 
-vec3 ComputeLight(vec3 lightDir, vec3 color, vec3 Normal)
+vec3 ComputeDirectionalLight(vec3 lightDir, vec3 color, vec3 Normal)
 {
 	lightDir = normalize(lightDir);
 	float diff = max(dot(Normal, lightDir), 0.0f);
-	return vec3(diff) * color;
+	float ambient = 0.1;
+
+	return vec3(diff + ambient) * color;
+}
+
+vec3 ComputePointLight(vec3 lightDir, Light light, vec3 Normal, float dist)
+{
+	lightDir = normalize(lightDir);
+	float diff = max(dot(Normal, lightDir), 0.0f);
+	float shadowIntensity = 1 - (dist / light.radius);
+
+	return vec3(diff) * light.color * light.intensity * shadowIntensity;
 }
 
 void main()
@@ -177,14 +190,16 @@ void main()
 			// Directional Light
 			case 0:
 			{
-				lightColor += ComputeLight(uLight[i].direction, uLight[i].color, Normal) * Albedo;
+				lightColor += ComputeDirectionalLight(uLight[i].direction, uLight[i].color, Normal) * Albedo;
 			}
 			break;
 			// Point Light
 			case 1:
 			{
 				vec3 lightDir = uLight[i].position - FragPos;
-				lightColor += ComputeLight(lightDir, uLight[i].color, Normal) * Albedo;
+				float dist = length(lightDir);
+				if(dist < uLight[i].radius)
+					lightColor += ComputePointLight(lightDir, uLight[i], Normal, dist) * Albedo;
 			}
 			break;
 		}
