@@ -162,7 +162,7 @@ struct Camera
 
 struct Transform
 {
-    Transform(vec3 pos = vec3(0.0f, 0.0f, 0.0f), vec3 rot = vec3(0.0f, 0.0f, 0.0f), vec3 factor = vec3(1.0f, 1.0f, 1.0f))
+    Transform(vec3 pos = vec3(0.0f), vec3 rot = vec3(0.0f), vec3 factor = vec3(1.0f))
     {
         position = pos;
         rotation = rot;
@@ -326,10 +326,10 @@ struct App
     std::vector<Light> lights;
 
     // GeometryIndex
-    u32 quadIndex;
     std::vector<u32> primitiveIndex;
     std::vector<std::string> primitiveNames = { "Cube", "Sphere", "Cylinder", "Cone", "Torus", "Plane" };
     u32 sphereIndex;
+    u32 quadIndex;
 };
 
 void Init(App* app);

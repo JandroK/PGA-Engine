@@ -399,21 +399,7 @@ void Init(App* app)
 		app->primitiveIndex.push_back(LoadModel(app, path.c_str()));
 	}
 	app->sphereIndex = app->primitiveIndex[1];
-	//u32 modelIndex = LoadModel(app, "Patrick/patrick.obj"); // "Backpack/backpack.obj"
-
-	// Fill entities array
-	/*for (size_t i = 0; i < 3; ++i)
-	{
-		Entity e;
-		vec3 pos = glm::rotate(glm::radians(360.0f / 3.0f * i), vec3(0.0f, 1.0f, 0.0f)) * vec4(vec3(4.0f, 4.0f, 0.0f), 1.0f);
-		e.transform = Transform(pos, vec3(0.0f, -90.0f, 0.0f));
-		e.worldMatrix = TransformConstructor(e.transform);
-		e.modelIndex = modelIndex;
-		char n = static_cast<char>(i);
-		e.name = "Patrick " + std::to_string(i);
-
-		app->entities.push_back(e);
-	}*/
+	app->quadIndex = app->primitiveIndex[5];
 
 	Entity e;
 	e.transform = Transform(vec3(0.0f), vec3(0.0f, -90.0f, 0.0f), vec3(0.5f));
@@ -426,15 +412,17 @@ void Init(App* app)
 	// Create light
 	Light lDir = InstanceLight(DIRECTIONAL_LIGHT, "Directional Light 0");
 	lDir.color = glm::normalize(vec3(98.0f, 128.0f, 160.0f));
+	lDir.position = vec3(17.8f, 27.5f, 0.0f);
 	app->lights.push_back(lDir);
 
 	lDir.name = "Directional Light 1";
+	lDir.position = vec3(0.0f, 32.0f, 0.0f);
 	lDir.direction = vec3(0.0f, -1.0f, 0.0f);
 	app->lights.push_back(lDir);
 
 	Light l = InstanceLight(POINT_LIGHT, "Point Light 0");
 	l.color = glm::normalize(vec3(254.0f, 101.0f, 53.0f));
-	l.position = vec3(6.6f, 18.8f, 11.2f);
+	l.position = vec3(6.6f, 18.9f, 11.2f);
 	app->lights.push_back(l);
 
 	l.name = "Point Light 1";
@@ -442,15 +430,15 @@ void Init(App* app)
 	app->lights.push_back(l);
 
 	l.name = "Point Light 2";
-	l.position = vec3(5.0f, 9.7f, 9.8f);
+	l.position = vec3(5.0f, 9.9f, 9.8f);
 	app->lights.push_back(l);
 
 	l.name = "Point Light 3";
-	l.position = vec3(-7.1f, 9.7f, 9.8f);
+	l.position = vec3(-7.1f, 9.9f, 9.8f);
 	app->lights.push_back(l);
 
 	l.name = "Point Light 4";
-	l.position = vec3(6.3f, 19.2f, -12.1f);
+	l.position = vec3(6.3f, 19.3f, -12.1f);
 	app->lights.push_back(l);
 
 	l.name = "Point Light 5";
@@ -571,6 +559,8 @@ void Gui(App* app)
 	GuiPrimitives(app);
 	GuiLightsInstance(app);
 
+	ImGui::NewLine();
+	ImGui::Text("Render Mode:");
 	if (ImGui::BeginCombo("##RenderMode", app->currentRenderMode.c_str()))
 	{
 		for (auto it : app->renderModes)
@@ -699,6 +689,9 @@ void GuiLights(App* app)
 			{
 			case DIRECTIONAL_LIGHT:
 			{
+				ImGui::Text("Position: ");
+				glm::vec3& pos = app->lights[i].position;
+				ImGui::DragFloat3("##Position", &pos[0], 0.1f, true);
 				ImGui::Text("Direction: ");
 				glm::vec3& dir = app->lights[i].direction;
 				ImGui::DragFloat3("##Direction", &dir[0], 0.1f, true);
@@ -1030,14 +1023,27 @@ void Render(App* app)
 		Program& programDebugLighting = app->programs[app->debugLightsProgramIdx];
 		glUseProgram(programDebugLighting.handle);
 
+		u32 modelIndex = 0;
+		float scaleFactor = 1.0;
+
 		for (Light it : app->lights)
 		{
-			Mesh& mesh = app->meshes[app->models[app->sphereIndex].meshIdx];
+			if (it.type == DIRECTIONAL_LIGHT)
+			{
+				modelIndex = app->quadIndex;
+				scaleFactor = 0.1f;
+			}
+			else
+			{
+				modelIndex = app->sphereIndex;
+				scaleFactor = 0.5f;
+			}
+
+			Mesh& mesh = app->meshes[app->models[modelIndex].meshIdx];
 			GLuint vao = FindVAO(mesh, 0, programDebugLighting);
 
-			glm::mat4 model = glm::mat4(1.0f);
-			model = glm::translate(model, it.position);
-			model = glm::scale(model, glm::vec3(0.5f));
+			glm::mat4 model = TransformConstructor(Transform(it.position, glm::degrees(it.direction), vec3(scaleFactor)));
+			//model = glm::scale(model, glm::vec3(0.5f));
 			model = app->camera.projection * app->camera.view * model;
 
 			glBindVertexArray(vao);
