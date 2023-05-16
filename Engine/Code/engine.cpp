@@ -398,11 +398,11 @@ void Init(App* app)
 		std::string path = "Primitives/" + app->primitiveNames[i] + ".obj";
 		app->primitiveIndex.push_back(LoadModel(app, path.c_str()));
 	}
-	u32 modelIndex = LoadModel(app, "Patrick/patrick.obj"); // "Backpack/backpack.obj"
 	app->sphereIndex = app->primitiveIndex[1];
+	//u32 modelIndex = LoadModel(app, "Patrick/patrick.obj"); // "Backpack/backpack.obj"
 
 	// Fill entities array
-	for (size_t i = 0; i < 3; ++i)
+	/*for (size_t i = 0; i < 3; ++i)
 	{
 		Entity e;
 		vec3 pos = glm::rotate(glm::radians(360.0f / 3.0f * i), vec3(0.0f, 1.0f, 0.0f)) * vec4(vec3(4.0f, 4.0f, 0.0f), 1.0f);
@@ -413,16 +413,25 @@ void Init(App* app)
 		e.name = "Patrick " + std::to_string(i);
 
 		app->entities.push_back(e);
-	}
+	}*/
 
-	// Set up playground
-	Entity playground = GeneratePrimitive(app->primitiveIndex[PrimitiveType::PLANE], "Playground");
-	app->entities.push_back(playground);
+	Entity e;
+	e.transform = Transform(vec3(0.0f), vec3(0.0f, -90.0f, 0.0f), vec3(0.5f));
+	e.worldMatrix = TransformConstructor(e.transform);
+	e.modelIndex = LoadModel(app, "House/casita2.obj");
+	e.name = "House";
 
+	app->entities.push_back(e);
 
 	// Create light
 	app->lights.push_back(InstanceLight(DIRECTIONAL_LIGHT,  "Directional Light"));
-	app->lights.push_back(InstanceLight(POINT_LIGHT,		"Point Light"));
+
+	Light l = InstanceLight(POINT_LIGHT, "Point Light 0");
+	l.position = vec3(6.6f, 19.5f, 11.2f);
+	app->lights.push_back(l);
+	l = InstanceLight(POINT_LIGHT, "Point Light 1");
+	l.position = vec3(-8.6f, 20.6f, 11.2f);
+	app->lights.push_back(l);
 
 	// Load programs
 	app->texturedGeometryProgramIdx = LoadProgram(app, "shaders.glsl", "SHOW_GEOMETRY_PASS");
@@ -477,8 +486,8 @@ void InitCamera(App* app)
 	app->camera.zFar = 100.0f;
 	app->camera.FOV = 60.0f;
 
-	app->camera.position = vec3(-20.0f, 10.0f, 5.0f);
-	app->camera.front = glm::normalize(vec3(20.0f, -9.0f, -5.0f));
+	app->camera.position = vec3(20.0f, 15.0f, 35.0f);
+	app->camera.front = glm::normalize(vec3(-20.0f, -2.0f, -35.0f));
 	app->camera.up = vec3(0.0f, 1.0f, 0.0f);
 	app->camera.projection = glm::perspective(glm::radians(app->camera.FOV), app->camera.aspectRatio, app->camera.zNear, app->camera.zFar);
 	app->camera.view = glm::lookAt(app->camera.position, app->camera.position + app->camera.front, app->camera.up);
