@@ -328,10 +328,23 @@ void GenerateRenderTextures(App* app)
 	glBindTexture(GL_TEXTURE_2D, 0);
 	app->renderModes["Final"] = app->finalAttachmentTexture;
 
+	// Depth Component
+	GLuint depthLightingAttachmentHandle;
+	glGenTextures(1, &depthLightingAttachmentHandle);
+	glBindTexture(GL_TEXTURE_2D, depthLightingAttachmentHandle);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT24, app->displaySize.x, app->displaySize.y, 0, GL_DEPTH_COMPONENT, GL_FLOAT, NULL);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+	glBindTexture(GL_TEXTURE_2D, 0);
+
 	glGenFramebuffers(1, &app->lightBuffer);
 	glBindFramebuffer(GL_FRAMEBUFFER, app->lightBuffer);
 	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, app->finalAttachmentTexture, 0);
-	
+	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, depthLightingAttachmentHandle, 0);
+
 	CheckFrameBufferStatus();
 
 	// Select on which render target to draw
