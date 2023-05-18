@@ -2,6 +2,8 @@
 
 This is a Advanced Graphics Programming Engine in deferred mode for render geometry and lighting.
 
+![Image](Engine/Screenshots/main_scene.png)
+
 ## Features
 
 - Rendering of meshes and models
@@ -23,5 +25,6 @@ This is a Advanced Graphics Programming Engine in deferred mode for render geome
 ## Controls
 
 - WASD to move camera
+- QE up / down camera
 - Mouse righ click to rate camera
 - Mouse wheel to zoom
