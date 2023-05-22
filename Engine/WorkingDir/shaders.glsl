@@ -177,7 +177,7 @@ void main()
 	// Retrieve data from G-buffer
     vec3 Albedo = texture(uGAlbedo, vTexCoord).rgb;
     vec3 FragPos = texture(uGPosition, vTexCoord).rgb;
-    vec3 Normal = texture(uGNormal, vTexCoord).rgb;
+    vec3 Normal = normalize(texture(uGNormal, vTexCoord).rgb);
 	float alpha = texture(uGAlbedo, vTexCoord).a;
 
 	if(alpha == 0.0)
@@ -342,7 +342,7 @@ void main()
 		// Directional Light
 		case 0:
 		{
-			lightColor += ComputeDirectionalLight(uLight[i].direction, uLight[i].color, vNormal);
+			lightColor += ComputeDirectionalLight(uLight[i].direction, uLight[i].color, normalize(vNormal));
 		}
 		break;
 		// Point Light
@@ -351,7 +351,7 @@ void main()
 			vec3 lightDir = uLight[i].position - vPosition;
 			float dist = length(lightDir);
 			if(dist < uLight[i].radius)
-				lightColor += ComputePointLight(lightDir, uLight[i], vNormal, dist);
+				lightColor += ComputePointLight(lightDir, uLight[i], normalize(vNormal), dist);
 		}
 		break;
 		}
