@@ -771,22 +771,16 @@ std::string GetNewLightName(App* app, std::string& name)
 
 void Update(App* app)
 {
+	app->timeGame += app->deltaTime;
 	// You can handle app->input keyboard/mouse here
 	MoveCamera(app);
-	LookAtCamera(app);
 
-	// Zoom camera (why don't can extrat to function?)
-	if (app->input.scrollDelta.y != 0.0f)
-	{
-		app->camera.FOV -= app->input.scrollDelta.y;
-		if (app->camera.FOV < 1.0f)
-			app->camera.FOV = 1.0f;
-		if (app->camera.FOV > 60.0f)
-			app->camera.FOV = 60;
+	if (app->input.keys[K_CTRL] == ButtonState::BUTTON_PRESSED)
+		OrbitCamera(app);
+	else
+		LookAtCamera(app);
 
-		app->input.scrollDelta.y = 0.0f;
-		app->camera.projection = glm::perspective(glm::radians(app->camera.FOV), app->camera.aspectRatio, app->camera.zNear, app->camera.zFar);
-	}
+	ZoomCamera(app);	
 
 	UniformBufferAlignment(app);
 }
@@ -829,6 +823,30 @@ void LookAtCamera(App* app)
 		direction.y = sin(glm::radians(app->camera.pitch));
 		direction.z = sin(glm::radians(app->camera.yaw)) * cos(glm::radians(app->camera.pitch));
 		app->camera.front = glm::normalize(direction);
+	}
+}
+
+void OrbitCamera(App* app)
+{
+	if (app->input.mouseButtons[RIGHT] == ButtonState::BUTTON_PRESSED)
+	{
+		// OrbitCamera
+		
+	}
+}
+
+void ZoomCamera(App* app)
+{
+	if (app->input.scrollDelta.y != 0.0f)
+	{
+		app->camera.FOV -= app->input.scrollDelta.y;
+		if (app->camera.FOV < 1.0f)
+			app->camera.FOV = 1.0f;
+		if (app->camera.FOV > 60.0f)
+			app->camera.FOV = 60;
+
+		app->input.scrollDelta.y = 0.0f;
+		app->camera.projection = glm::perspective(glm::radians(app->camera.FOV), app->camera.aspectRatio, app->camera.zNear, app->camera.zFar);
 	}
 }
 

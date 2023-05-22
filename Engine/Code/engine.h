@@ -240,6 +240,7 @@ struct App
 {
     // Loop
     f32  deltaTime;
+    float timeGame = 0.0f;
     bool isRunning;
 
     // Input
@@ -373,6 +374,10 @@ void Update(App* app);
 void MoveCamera(App* app);
 
 void LookAtCamera(App* app);
+
+void OrbitCamera(App* app);
+
+void ZoomCamera(App* app);
 
 void RecalculateProjection(App* app, glm::vec2 size);
 
