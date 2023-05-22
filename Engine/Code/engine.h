@@ -259,7 +259,8 @@ struct App
     std::vector<Program>  programs;
 
     // program indices
-    u32 texturedGeometryProgramIdx;
+    u32 texturedForwardGeometryProgramIdx;
+    u32 texturedDeferredGeometryProgramIdx;
     u32 texturedLightingProgramIdx;
     u32 debugLightsProgramIdx;
     
@@ -278,7 +279,8 @@ struct App
     GLuint embeddedElements;
 
     // Location of the texture uniform in the textured quad shader
-    GLuint programUniformTexture;
+    GLuint programForwardUniformTexture;
+    GLuint programDeferredUniformTexture;
     GLint uGAlbedo;
     GLint uGPosition;
     GLint uGNormal;
@@ -307,8 +309,12 @@ struct App
     GLuint lightBuffer;
 
     // Render Mode
-    std::unordered_map< std::string, GLuint> renderModes;
-    std::string currentRenderMode = "Final";
+    std::vector<std::string> renderModes = {"Forward", "Deferred"};
+    std::string currentMode;
+
+    // Render Target Texture
+    std::unordered_map< std::string, GLuint> renderTargets;
+    std::string currentRenderTarget = "Final";
 
     // GlobalParams
     u32 globalParamsSize;

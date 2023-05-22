@@ -242,14 +242,14 @@ void GenerateRenderTextures(App* app)
 	// Albedo Texture
 	glGenTextures(1, &app->colorAttachmentTexture);
 	glBindTexture(GL_TEXTURE_2D, app->colorAttachmentTexture);
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, app->displaySize.x, app->displaySize.y, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16F, app->displaySize.x, app->displaySize.y, 0, GL_RGBA, GL_FLOAT, NULL);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 	glBindTexture(GL_TEXTURE_2D, 0);
-	app->renderModes["Color"] = app->colorAttachmentTexture;
+	app->renderTargets["Color"] = app->colorAttachmentTexture;
 	
 	// Position Texture
 	glGenTextures(1, &app->positionAttachmentTexture);
@@ -261,7 +261,7 @@ void GenerateRenderTextures(App* app)
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 	glBindTexture(GL_TEXTURE_2D, 0);
-	app->renderModes["Position"] = app->positionAttachmentTexture;
+	app->renderTargets["Position"] = app->positionAttachmentTexture;
 
 	// Normal Texture
 	glGenTextures(1, &app->normalAttachmentTexture);
@@ -273,7 +273,7 @@ void GenerateRenderTextures(App* app)
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 	glBindTexture(GL_TEXTURE_2D, 0);
-	app->renderModes["Normal"] = app->normalAttachmentTexture;
+	app->renderTargets["Normal"] = app->normalAttachmentTexture;
 
 	// Depth Texture
 	glGenTextures(1, &app->depthAttachmentTexture);
@@ -285,7 +285,7 @@ void GenerateRenderTextures(App* app)
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 	glBindTexture(GL_TEXTURE_2D, 0);
-	app->renderModes["Depth"] = app->depthAttachmentTexture;
+	app->renderTargets["Depth"] = app->depthAttachmentTexture;
 
 	// Depth Component
 	GLuint depthAttachmentHandle;
@@ -326,7 +326,7 @@ void GenerateRenderTextures(App* app)
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 	glBindTexture(GL_TEXTURE_2D, 0);
-	app->renderModes["Final"] = app->finalAttachmentTexture;
+	app->renderTargets["Final"] = app->finalAttachmentTexture;
 
 	// Depth Component
 	GLuint depthLightingAttachmentHandle;
@@ -446,9 +446,9 @@ void Init(App* app)
 	app->lights.push_back(l);
 
 	// Load programs
-	app->texturedGeometryProgramIdx = LoadProgram(app, "shaders.glsl", "SHOW_GEOMETRY_PASS");
-	LoadShader(app, app->texturedGeometryProgramIdx);
-	app->programUniformTexture = glGetUniformLocation(app->programs[app->texturedGeometryProgramIdx].handle, "uTexture");
+	app->texturedDeferredGeometryProgramIdx = LoadProgram(app, "shaders.glsl", "SHOW_GEOMETRY_PASS");
+	LoadShader(app, app->texturedDeferredGeometryProgramIdx);
+	app->programDeferredUniformTexture = glGetUniformLocation(app->programs[app->texturedDeferredGeometryProgramIdx].handle, "uTexture");
 
 	app->texturedLightingProgramIdx = LoadProgram(app, "shaders.glsl", "SHOW_LIGHTING_PASS");
 	LoadShader(app, app->texturedLightingProgramIdx);
@@ -461,7 +461,12 @@ void Init(App* app)
 	app->uWorldViewProjection = glGetUniformLocation(app->programs[app->debugLightsProgramIdx].handle, "worldViewProjection");
 	app->uDebugLightColor = glGetUniformLocation(app->programs[app->debugLightsProgramIdx].handle, "uLightColor");
 
-	app->mode = DEFERRED;
+	app->texturedForwardGeometryProgramIdx = LoadProgram(app, "shaders.glsl", "SHOW_FORWARD");
+	LoadShader(app, app->texturedForwardGeometryProgramIdx);
+	app->programForwardUniformTexture = glGetUniformLocation(app->programs[app->texturedForwardGeometryProgramIdx].handle, "uTexture");
+
+	app->mode = FORWARD;
+	app->currentMode = "Forward";
 }
 
 void LoadShader(App* app, u32 index)
@@ -561,13 +566,16 @@ void Gui(App* app)
 
 	ImGui::NewLine();
 	ImGui::Text("Render Mode:");
-	if (ImGui::BeginCombo("##RenderMode", app->currentRenderMode.c_str()))
+	if (ImGui::BeginCombo("##RenderMode", app->currentMode.c_str()))
 	{
-		for (auto it : app->renderModes)
+		for (std::string it : app->renderModes)
 		{
-			bool isSelected = !app->currentRenderMode.compare(it.first);
-			if (ImGui::Selectable(it.first.c_str(), isSelected))
-				app->currentRenderMode = it.first;
+			bool isSelected = !app->currentMode.compare(it);
+			if (ImGui::Selectable(it.c_str(), isSelected))
+			{
+				app->currentMode = it;
+				app->mode = (it == "Deferred") ? DEFERRED : FORWARD;				
+			}
 			if (isSelected)
 				ImGui::SetItemDefaultFocus();
 		}
@@ -575,7 +583,28 @@ void Gui(App* app)
 		ImGui::EndCombo();
 	}
 
-	ImGui::NewLine();
+	if (app->mode == DEFERRED)
+	{
+		ImGui::NewLine();
+
+		ImGui::NewLine();
+		ImGui::Text("Render Targets Textures:");
+		if (ImGui::BeginCombo("##RenderTargetsTextures", app->currentRenderTarget.c_str()))
+		{
+			for (auto it : app->renderTargets)
+			{
+				bool isSelected = !app->currentRenderTarget.compare(it.first);
+				if (ImGui::Selectable(it.first.c_str(), isSelected))
+					app->currentRenderTarget = it.first;
+				if (isSelected)
+					ImGui::SetItemDefaultFocus();
+			}
+			ImGui::Separator();
+			ImGui::EndCombo();
+		}
+
+		ImGui::NewLine();
+	}	
 
 	GuiEntities(app);
 	GuiLights(app);
@@ -587,7 +616,11 @@ void Gui(App* app)
 	{
 		ImVec2 size = ImGui::GetContentRegionAvail();
 		RecalculateProjection(app, glm::vec2(size.x, size.y));
-		ImGui::Image((ImTextureID)app->renderModes[app->currentRenderMode], size, ImVec2(0, 1), ImVec2(1, 0));
+
+		if(app->mode == DEFERRED)
+			ImGui::Image((ImTextureID)app->renderTargets[app->currentRenderTarget], size, ImVec2(0, 1), ImVec2(1, 0));
+		else
+			ImGui::Image((ImTextureID)app->renderTargets["Color"], size, ImVec2(0, 1), ImVec2(1, 0));
 	}
 	ImGui::End();
 
@@ -897,19 +930,12 @@ void UniformBufferAlignment(App* app)
 
 void Render(App* app)
 {
-	// Clean screen
-	glClearColor(0.1, 0.1, 0.1, 0.);
-	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
-	// Indicate to OpneGL the screen size in the current frame
-	glViewport(0, 0, app->displaySize.x, app->displaySize.y);
-
 	switch (app->mode)
 	{
 	case TEXTURED_QUAD:
 	{
 		// Indicate which shader we are going to use
-		Program& programTexturedGeometry = app->programs[app->texturedGeometryProgramIdx];
+		Program& programTexturedGeometry = app->programs[app->texturedForwardGeometryProgramIdx];
 		glUseProgram(programTexturedGeometry.handle);
 		glBindVertexArray(app->vao);
 
@@ -917,7 +943,7 @@ void Render(App* app)
 		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
 		// Use 1i because we pass it 1 int, if we pass it a vector3 of floats we would use glUniform3f
-		glUniform1i(app->programUniformTexture, 0); // ID = 0
+		glUniform1i(app->programForwardUniformTexture, 0); // ID = 0
 		glActiveTexture(GL_TEXTURE0);				// The last number of GL_TEXTURE must match the above number which is 0
 		GLuint textureHandle = app->textures[app->whiteTexIdx].handle;
 		glBindTexture(GL_TEXTURE_2D, textureHandle);
@@ -932,6 +958,13 @@ void Render(App* app)
 	}
 	case FORWARD:
 	{
+		// Clean screen
+		glClearColor(0.1, 0.1, 0.1, 1.0);
+		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+		// Indicate to OpneGL the screen size in the current frame
+		glViewport(0, 0, app->displaySize.x, app->displaySize.y);
+
 		// Render on this framebuffer render target
 		glBindFramebuffer(GL_FRAMEBUFFER, app->gBuffer);
 
@@ -939,7 +972,7 @@ void Render(App* app)
 		glEnable(GL_DEPTH_TEST);
 
 		// Indicate which shader we are going to use
-		Program& programTexturedGeometry = app->programs[app->texturedGeometryProgramIdx];
+		Program& programTexturedGeometry = app->programs[app->texturedForwardGeometryProgramIdx];
 		glUseProgram(programTexturedGeometry.handle);
 
 		for (Entity entity : app->entities)
@@ -960,7 +993,7 @@ void Render(App* app)
 				glActiveTexture(GL_TEXTURE0);
 				GLuint textureHandle = app->textures[submeshMaterial.albedoTextureIdx].handle;
 				glBindTexture(GL_TEXTURE_2D, textureHandle);
-				glUniform1i(app->programUniformTexture, 0);
+				glUniform1i(app->programForwardUniformTexture, 0);
 
 				Submesh& submesh = mesh.submeshes[i];
 				glDrawElements(GL_TRIANGLES, submesh.indices.size(), GL_UNSIGNED_INT, (void*)(u64)submesh.indexOffset);
@@ -976,6 +1009,12 @@ void Render(App* app)
 	}
 	case DEFERRED:
 	{
+		// Clean screen
+		glClearColor(0.1, 0.1, 0.1, 0.0);
+		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+		// Indicate to OpneGL the screen size in the current frame
+		glViewport(0, 0, app->displaySize.x, app->displaySize.y);
 		///////////////////////////////////////////////// Geometry pass ////////////////////////////////////////
 
 		// Render on this framebuffer render target
@@ -985,7 +1024,7 @@ void Render(App* app)
 		glEnable(GL_DEPTH_TEST);
 
 		// Indicate which shader we are going to use
-		Program& programTexturedGeometry = app->programs[app->texturedGeometryProgramIdx];
+		Program& programTexturedGeometry = app->programs[app->texturedDeferredGeometryProgramIdx];
 		glUseProgram(programTexturedGeometry.handle);
 
 		for (Entity entity : app->entities)
@@ -1005,7 +1044,7 @@ void Render(App* app)
 				glActiveTexture(GL_TEXTURE0);
 				GLuint textureHandle = app->textures[submeshMaterial.albedoTextureIdx].handle;
 				glBindTexture(GL_TEXTURE_2D, textureHandle);
-				glUniform1i(app->programUniformTexture, 0);
+				glUniform1i(app->programDeferredUniformTexture, 0);
 
 				Submesh& submesh = mesh.submeshes[i];
 				glDrawElements(GL_TRIANGLES, submesh.indices.size(), GL_UNSIGNED_INT, (void*)(u64)submesh.indexOffset);

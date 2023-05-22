@@ -180,14 +180,18 @@ void main()
     vec3 Normal = texture(uGNormal, vTexCoord).rgb;
 	float alpha = texture(uGAlbedo, vTexCoord).a;
 
-	// lightColor = the sum of all light, if there aren't any,
-	// complete darkness = vec(0.0f);
-	vec3 lightColor = vec3(0.0f);
-
-	for(int i = 0; i < uLightCount; ++i)
+	if(alpha == 0.0)
+		discard;
+	else
 	{
-		switch(uLight[i].type)
+		// lightColor = the sum of all light, if there aren't any,
+		// complete darkness = vec(0.0f);
+		vec3 lightColor = vec3(0.0f);
+
+		for(int i = 0; i < uLightCount; ++i)
 		{
+			switch(uLight[i].type)
+			{
 			// Directional Light
 			case 0:
 			{
@@ -203,14 +207,10 @@ void main()
 					lightColor += ComputePointLight(lightDir, uLight[i], Normal, dist) * Albedo;
 			}
 			break;
+			}
 		}
-	}
-
-	// Final color
-	if(alpha == 0.0)
-		discard;
-	else
 		oFinal = vec4(lightColor, 1.0f);
+	}
 }
 
 #endif
@@ -254,6 +254,8 @@ struct Light
     vec3         color;
     vec3         direction;
     vec3         position;
+	float 		 radius;
+	float        intensity;
 };
 
 #if defined(VERTEX) ///////////////////////////////////////////////////
@@ -280,15 +282,13 @@ layout(binding = 1, std140) uniform LocalParams
 out vec2 vTexCoord;
 out vec3 vPosition;	// In worldspace
 out vec3 vNormal;	// In worldspace
-out vec3 vViewDir;
 
 void main()
 {
 	vTexCoord = aTexCoord;
 
 	vPosition = vec3(uWorldMatrix * vec4(aPosition, 1.0));
-	vNormal   = vec3(uWorldMatrix * vec4(aNormal, 0.0));
-	vViewDir  = uCameraPosition - vPosition;
+	vNormal   = vec3(uWorldMatrix * vec4(aNormal, 0.0));	
 	gl_Position = uWorldViewProjectionMatrix * vec4(aPosition, 1.0);
 }
 
@@ -297,7 +297,6 @@ void main()
 in vec2 vTexCoord;
 in vec3 vPosition;
 in vec3 vNormal;
-in vec3 vViewDir;
 
 uniform sampler2D uTexture;
 
@@ -340,21 +339,21 @@ void main()
 	{
 		switch(uLight[i].type)
 		{
-			// Directional Light
-			case 0:
-			{
-				lightColor += ComputeDirectionalLight(uLight[i].direction, uLight[i].color, vNormal);
-			}
-			break;
-			// Point Light
-			case 1:
-			{
-				vec3 lightDir = uLight[i].position - vPosition;
-				float dist = length(lightDir);
-				if(dist < uLight[i].radius)
-					lightColor += ComputePointLight(lightDir, uLight[i], vNormal, dist);
-			}
-			break;
+		// Directional Light
+		case 0:
+		{
+			lightColor += ComputeDirectionalLight(uLight[i].direction, uLight[i].color, vNormal);
+		}
+		break;
+		// Point Light
+		case 1:
+		{
+			vec3 lightDir = uLight[i].position - vPosition;
+			float dist = length(lightDir);
+			if(dist < uLight[i].radius)
+				lightColor += ComputePointLight(lightDir, uLight[i], vNormal, dist);
+		}
+		break;
 		}
 	}
 
