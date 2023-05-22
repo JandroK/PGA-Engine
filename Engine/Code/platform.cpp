@@ -24,8 +24,8 @@
 #include <imgui_impl_opengl3.h>
 
 #define WINDOW_TITLE  "Advanced Graphics Programming"
-#define WINDOW_WIDTH  1280
-#define WINDOW_HEIGHT 1024
+#define WINDOW_WIDTH  1920
+#define WINDOW_HEIGHT 1080
 
 #define GLOBAL_FRAME_ARENA_SIZE MB(16)
 u8* GlobalFrameArenaMemory = NULL;
