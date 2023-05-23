@@ -504,12 +504,15 @@ void InitCamera(App* app)
 	app->camera.FOV = 60.0f;
 
 	app->camera.position = vec3(25.0f, 15.0f, 30.0f);
+	app->camera.upWorld = vec3(0.0f, 1.0f, 0.0f);
 	app->camera.front = glm::normalize(vec3(-25.0f, -2.0f, -30.0f));
-	app->camera.up = vec3(0.0f, 1.0f, 0.0f);
+	app->camera.right = glm::normalize(glm::cross(app->camera.front, app->camera.upWorld));
+	app->camera.up = glm::normalize(glm::cross(app->camera.right, app->camera.front));
 	app->camera.projection = glm::perspective(glm::radians(app->camera.FOV), app->camera.aspectRatio, app->camera.zNear, app->camera.zFar);
 	app->camera.view = glm::lookAt(app->camera.position, app->camera.position + app->camera.front, app->camera.up);
 
 	app->camera.speed = 15.0f;
+	app->camera.orbitSpeed = 10.0f;
 	app->camera.sensibility = 0.15f;
 	app->camera.pitch = glm::degrees(asin(app->camera.front.y));
 	app->camera.yaw = -glm::degrees(acos(app->camera.front.x / cos(glm::radians(app->camera.pitch))));
@@ -806,14 +809,13 @@ void Update(App* app)
 {
 	app->timeGame += app->deltaTime;
 	// You can handle app->input keyboard/mouse here
-	MoveCamera(app);
-
 	if (app->input.keys[K_CTRL] == ButtonState::BUTTON_PRESSED)
 		OrbitCamera(app);
 	else
 		LookAtCamera(app);
 
-	ZoomCamera(app);	
+	ZoomCamera(app);
+	MoveCamera(app);
 
 	UniformBufferAlignment(app);
 }
@@ -825,9 +827,9 @@ void MoveCamera(App* app)
 	if (app->input.keys[K_S] == ButtonState::BUTTON_PRESSED)
 		app->camera.position -= app->camera.speed * app->deltaTime * app->camera.front;
 	if (app->input.keys[K_A] == ButtonState::BUTTON_PRESSED)
-		app->camera.position -= glm::normalize(glm::cross(app->camera.front, app->camera.up)) * app->camera.speed * app->deltaTime;
+		app->camera.position -= app->camera.right * app->camera.speed * app->deltaTime;
 	if (app->input.keys[K_D] == ButtonState::BUTTON_PRESSED)
-		app->camera.position += glm::normalize(glm::cross(app->camera.front, app->camera.up)) * app->camera.speed * app->deltaTime;
+		app->camera.position += app->camera.right * app->camera.speed * app->deltaTime;
 	if (app->input.keys[K_Q] == ButtonState::BUTTON_PRESSED)
 		app->camera.position -= app->camera.speed * app->deltaTime * app->camera.up;
 	if (app->input.keys[K_E] == ButtonState::BUTTON_PRESSED)
@@ -855,7 +857,10 @@ void LookAtCamera(App* app)
 		direction.x = cos(glm::radians(app->camera.yaw)) * cos(glm::radians(app->camera.pitch));
 		direction.y = sin(glm::radians(app->camera.pitch));
 		direction.z = sin(glm::radians(app->camera.yaw)) * cos(glm::radians(app->camera.pitch));
+
 		app->camera.front = glm::normalize(direction);
+		app->camera.right = glm::normalize(glm::cross(app->camera.front, app->camera.upWorld));
+		app->camera.up = glm::normalize(glm::cross(app->camera.right, app->camera.front));
 	}
 }
 
@@ -864,7 +869,29 @@ void OrbitCamera(App* app)
 	if (app->input.mouseButtons[RIGHT] == ButtonState::BUTTON_PRESSED)
 	{
 		// OrbitCamera
-		
+		app->input.mouseDelta.x *= -app->camera.sensibility;
+		app->input.mouseDelta.y *= -app->camera.sensibility;
+
+		vec3 reference = app->camera.front;
+		glm::quat pivot = glm::angleAxis(app->input.mouseDelta.x * app->deltaTime * app->camera.orbitSpeed, app->camera.upWorld);
+
+		// Subir da positivo, bajat da negativo
+		if (abs(app->camera.up.y) < 0.1f) // Avoid gimball lock on up & down apex
+		{			
+			// Look down
+			if ((app->camera.position.y > reference.y && app->input.mouseDelta.y > 0.f) ||	// Look down
+				(app->camera.position.y < reference.y && app->input.mouseDelta.y < 0.f))	// Look up	
+				pivot = pivot * glm::angleAxis(app->input.mouseDelta.y * app->deltaTime * app->camera.orbitSpeed, app->camera.right);
+		}
+		else
+		{
+			pivot = pivot * glm::angleAxis(app->input.mouseDelta.y * app->deltaTime * app->camera.orbitSpeed, app->camera.right);
+		}
+
+		app->camera.position = pivot * (app->camera.position - reference) + reference;
+		app->camera.front = glm::normalize(reference - app->camera.position);
+		app->camera.right = glm::normalize(glm::cross(app->camera.front, app->camera.upWorld));
+		app->camera.up = glm::normalize(glm::cross(app->camera.right, app->camera.front));
 	}
 }
 

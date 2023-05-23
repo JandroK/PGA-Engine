@@ -147,9 +147,12 @@ struct Camera
     glm::mat4 view;
     glm::vec3 position;
     glm::vec3 front;
+    glm::vec3 right;
     glm::vec3 up;
+    glm::vec3 upWorld;
 
     float speed;
+    float orbitSpeed;
     float sensibility;
     float yaw;
     float pitch;
