@@ -1117,23 +1117,6 @@ void Render(App* app)
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 		glEnable(GL_DEPTH_TEST);
 
-		// CUBEMAP
-		glDepthMask(GL_FALSE);
-
-		Program& programCubemap = app->programs[app->cubemapProgramIdx];
-		glUseProgram(programCubemap.handle);
-		glBindVertexArray(app->skyboxVAO);
-
-		glm::mat4 view = glm::mat4(glm::mat3(app->camera.view));
-		glm::mat4 cubemapuWorldViewProjection = app->camera.projection * view;
-		glUniformMatrix4fv(app->cubemapuWorldViewProjection, 1, GL_FALSE, &cubemapuWorldViewProjection[0][0]);
-		glActiveTexture(GL_TEXTURE0);
-		glBindTexture(GL_TEXTURE_CUBE_MAP, app->skyboxID);		
-
-		glDrawArrays(GL_TRIANGLES, 0, 36);
-		glBindVertexArray(0);
-		glDepthMask(GL_TRUE);
-
 		// Indicate which shader we are going to use
 		Program& programTexturedGeometry = app->programs[app->texturedForwardGeometryProgramIdx];
 		glUseProgram(programTexturedGeometry.handle);
@@ -1166,7 +1149,11 @@ void Render(App* app)
 		}
 		glUseProgram(0);
 
+		// Debug lights
 		RenderDebug(app);
+		// Cubemap
+		RenderSkybox(app);
+
 		// Render on screen again
 		glBindFramebuffer(GL_FRAMEBUFFER, 0);
 		break;
@@ -1218,6 +1205,13 @@ void Render(App* app)
 		}
 
 		glUseProgram(0);
+
+		if (app->currentRenderTarget != "Final")
+		{
+			// Cubemap
+			RenderSkybox(app);
+		}		
+
 		// Render on screen again
 		glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
@@ -1240,8 +1234,14 @@ void Render(App* app)
 		glBlitFramebuffer(0, 0, app->displaySize.x, app->displaySize.x, 0, 0, app->displaySize.x, app->displaySize.x, GL_DEPTH_BUFFER_BIT, GL_NEAREST);
 		glUseProgram(0);
 
-		///////////////////////////////////////////////// Debug lights ////////////////////////////////////////
+		// Debug lights
 		RenderDebug(app);
+		
+		if (app->currentRenderTarget == "Final")
+		{
+			// Cubemap
+			RenderSkybox(app);
+		}
 
 		glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
@@ -1328,6 +1328,25 @@ void RenderDebug(App* app)
 	glBindVertexArray(0);
 
 	glUseProgram(0);
+}
+// CUBEMAP
+void RenderSkybox(App* app)
+{
+	glDepthFunc(GL_LEQUAL);
+
+	Program& programCubemap = app->programs[app->cubemapProgramIdx];
+	glUseProgram(programCubemap.handle);
+	glBindVertexArray(app->skyboxVAO);
+
+	glm::mat4 view = glm::mat4(glm::mat3(app->camera.view));
+	glm::mat4 cubemapuWorldViewProjection = app->camera.projection * view;
+	glUniformMatrix4fv(app->cubemapuWorldViewProjection, 1, GL_FALSE, &cubemapuWorldViewProjection[0][0]);
+	glActiveTexture(GL_TEXTURE0);
+	glBindTexture(GL_TEXTURE_CUBE_MAP, app->skyboxID);
+
+	glDrawArrays(GL_TRIANGLES, 0, 36);
+	glBindVertexArray(0);
+	glDepthFunc(GL_LESS);
 }
 
 GLuint FindVAO(Mesh& mesh, u32 submeshIndex, const Program& program)

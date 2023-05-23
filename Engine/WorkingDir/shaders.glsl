@@ -378,7 +378,8 @@ uniform mat4 worldViewProjection;
 void main()
 {
 	TexCoords = -aPosition;
-	gl_Position = worldViewProjection * vec4(aPosition, 1.0);
+	vec4 pos = worldViewProjection * vec4(aPosition, 1.0);
+	gl_Position = pos.xyww;
 }
 
 #elif defined(FRAGMENT) ///////////////////////////////////////////////

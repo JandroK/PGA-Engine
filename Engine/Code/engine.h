@@ -406,11 +406,13 @@ void RenderQuad(App* app);
 
 void RenderDebug(App* app);
 
+void RenderSkybox(App* app);
+
 u32 LoadTexture2D(App* app, const char* filepath);
 
 GLuint LoadCubemap(App* app);
 
-void GenerateSkyboxVAO();
+void GenerateSkyboxVAO(App* app);
 
 GLuint FindVAO(Mesh& mesh, u32 submeshIndex, const Program& program);
 
