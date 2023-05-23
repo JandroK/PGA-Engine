@@ -9,6 +9,7 @@
 #include <imgui.h>
 #include <stb_image.h>
 #include <stb_image_write.h>
+#include <math.h>
 
 #include "assimp_model_loading.h"
 
@@ -504,6 +505,7 @@ void InitCamera(App* app)
 	app->camera.FOV = 60.0f;
 
 	app->camera.position = vec3(25.0f, 15.0f, 30.0f);
+	app->camera.target = vec3(0.0f, 13.0f, 0.0f);
 	app->camera.upWorld = vec3(0.0f, 1.0f, 0.0f);
 	app->camera.front = glm::normalize(vec3(-25.0f, -2.0f, -30.0f));
 	app->camera.right = glm::normalize(glm::cross(app->camera.front, app->camera.upWorld));
@@ -607,7 +609,12 @@ void Gui(App* app)
 		}
 
 		ImGui::NewLine();
-	}	
+	}
+
+	ImGui::Text("Pivot Point: ");
+	glm::vec3& position = app->camera.target;
+	ImGui::DragFloat3("##Pivot Point", &position[0], 0.5f, true);
+	ImGui::NewLine();
 
 	GuiEntities(app);
 	GuiLights(app);
@@ -872,7 +879,7 @@ void OrbitCamera(App* app)
 		app->input.mouseDelta.x *= -app->camera.sensibility;
 		app->input.mouseDelta.y *= -app->camera.sensibility;
 
-		vec3 reference = app->camera.front;
+		vec3 reference = app->camera.target;
 		glm::quat pivot = glm::angleAxis(app->input.mouseDelta.x * app->deltaTime * app->camera.orbitSpeed, app->camera.upWorld);
 
 		// Subir da positivo, bajat da negativo
@@ -892,6 +899,17 @@ void OrbitCamera(App* app)
 		app->camera.front = glm::normalize(reference - app->camera.position);
 		app->camera.right = glm::normalize(glm::cross(app->camera.front, app->camera.upWorld));
 		app->camera.up = glm::normalize(glm::cross(app->camera.right, app->camera.front));
+
+		app->camera.pitch = glm::degrees(asin(app->camera.front.y));
+		if(app->camera.front.z < 0.0f)
+			app->camera.yaw = -glm::degrees(acos(app->camera.front.x / cos(glm::radians(app->camera.pitch))));
+		else
+			app->camera.yaw = glm::degrees(acos(app->camera.front.x / cos(glm::radians(app->camera.pitch))));
+
+		if (app->camera.pitch > 89.0f)
+			app->camera.pitch = 89.0f;
+		if (app->camera.pitch < -89.0f)
+			app->camera.pitch = -89.0f;	
 	}
 }
 
@@ -1028,8 +1046,9 @@ void Render(App* app)
 				glBindVertexArray(0);
 			}
 		}
-
 		glUseProgram(0);
+
+		RenderDebug(app);
 		// Render on screen again
 		glBindFramebuffer(GL_FRAMEBUFFER, 0);
 		break;
@@ -1104,41 +1123,8 @@ void Render(App* app)
 		glUseProgram(0);
 
 		///////////////////////////////////////////////// Debug lights ////////////////////////////////////////
-		Program& programDebugLighting = app->programs[app->debugLightsProgramIdx];
-		glUseProgram(programDebugLighting.handle);
+		RenderDebug(app);
 
-		u32 modelIndex = 0;
-		float scaleFactor = 1.0;
-
-		for (Light it : app->lights)
-		{
-			if (it.type == DIRECTIONAL_LIGHT)
-			{
-				modelIndex = app->quadIndex;
-				scaleFactor = 0.1f;
-			}
-			else
-			{
-				modelIndex = app->sphereIndex;
-				scaleFactor = 0.5f;
-			}
-
-			Mesh& mesh = app->meshes[app->models[modelIndex].meshIdx];
-			GLuint vao = FindVAO(mesh, 0, programDebugLighting);
-
-			glm::mat4 model = TransformConstructor(Transform(it.position, glm::degrees(it.direction), vec3(scaleFactor)));
-			//model = glm::scale(model, glm::vec3(0.5f));
-			model = app->camera.projection * app->camera.view * model;
-
-			glBindVertexArray(vao);
-			glUniformMatrix4fv(app->uWorldViewProjection, 1, GL_FALSE, &model[0][0]);
-			glUniform3f(app->uDebugLightColor, it.color.r, it.color.g, it.color.b);
-
-			glDrawElements(GL_TRIANGLES, mesh.submeshes[0].indices.size(), GL_UNSIGNED_INT, 0);
-			glBindVertexArray(0);
-		}
-
-		glUseProgram(0);
 		glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
 		break;
@@ -1172,6 +1158,58 @@ void RenderQuad(App* app)
 	// Draw
 	glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_SHORT, 0);
 	glBindVertexArray(0);
+}
+
+void RenderDebug(App* app)
+{
+	Program& programDebugLighting = app->programs[app->debugLightsProgramIdx];
+	glUseProgram(programDebugLighting.handle);
+
+	u32 modelIndex = 0;
+	float scaleFactor = 1.0;
+
+	// Lights
+	for (Light it : app->lights)
+	{
+		if (it.type == DIRECTIONAL_LIGHT)
+		{
+			modelIndex = app->quadIndex;
+			scaleFactor = 0.1f;
+		}
+		else
+		{
+			modelIndex = app->sphereIndex;
+			scaleFactor = 0.5f;
+		}
+
+		Mesh& mesh = app->meshes[app->models[modelIndex].meshIdx];
+		GLuint vao = FindVAO(mesh, 0, programDebugLighting);
+
+		glm::mat4 model = TransformConstructor(Transform(it.position, glm::degrees(it.direction), vec3(scaleFactor)));
+		model = app->camera.projection * app->camera.view * model;
+
+		glBindVertexArray(vao);
+		glUniformMatrix4fv(app->uWorldViewProjection, 1, GL_FALSE, &model[0][0]);
+		glUniform3f(app->uDebugLightColor, it.color.r, it.color.g, it.color.b);
+
+		glDrawElements(GL_TRIANGLES, mesh.submeshes[0].indices.size(), GL_UNSIGNED_INT, 0);
+		glBindVertexArray(0);
+	}
+	// Debug Pivot Target
+	Mesh& mesh = app->meshes[app->models[app->sphereIndex].meshIdx];
+	GLuint vao = FindVAO(mesh, 0, programDebugLighting);
+
+	glm::mat4 model = TransformConstructor(Transform(app->camera.target, vec3(0.0f), vec3(1.0)));
+	model = app->camera.projection * app->camera.view * model;
+
+	glBindVertexArray(vao);
+	glUniformMatrix4fv(app->uWorldViewProjection, 1, GL_FALSE, &model[0][0]);
+	glUniform3f(app->uDebugLightColor, 0.8f, 0.8f, 0.8f);
+
+	glDrawElements(GL_TRIANGLES, mesh.submeshes[0].indices.size(), GL_UNSIGNED_INT, 0);
+	glBindVertexArray(0);
+
+	glUseProgram(0);
 }
 
 GLuint FindVAO(Mesh& mesh, u32 submeshIndex, const Program& program)
@@ -1236,6 +1274,7 @@ glm::mat4 TransformConstructor(const Transform t)
 
 	return glm::scale(transform, t.scale);
 }
+
 glm::mat4 TransformPosition(glm::mat4 matrix, const vec3& pos)
 {
 	return glm::translate(matrix, pos);

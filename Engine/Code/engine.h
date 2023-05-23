@@ -146,6 +146,7 @@ struct Camera
     glm::mat4 projection;
     glm::mat4 view;
     glm::vec3 position;
+    glm::vec3 target;
     glm::vec3 front;
     glm::vec3 right;
     glm::vec3 up;
@@ -336,7 +337,7 @@ struct App
     std::vector<Light> lights;
 
     // GeometryIndex
-    std::vector<u32> primitiveIndex;
+    std::vector<u32> primitiveIndex = std::vector<u32>();
     std::vector<std::string> primitiveNames = { "Cube", "Sphere", "Cylinder", "Cone", "Torus", "Plane" };
     u32 sphereIndex;
     u32 quadIndex;
@@ -395,6 +396,8 @@ void UniformBufferAlignment(App* app);
 void Render(App* app);
 
 void RenderQuad(App* app);
+
+void RenderDebug(App* app);
 
 u32 LoadTexture2D(App* app, const char* filepath);
 
