@@ -362,3 +362,36 @@ void main()
 
 #endif
 #endif
+
+///////////////////////////////////////////////////////////////////////
+///////////////////////////// CUBEMAP /////////////////////////////////
+///////////////////////////////////////////////////////////////////////`
+
+#ifdef SHOW_CUBE_MAP
+
+#if defined(VERTEX) ///////////////////////////////////////////////////
+
+layout (location = 0) in vec3 aPosition;
+out vec3 TexCoords;
+uniform mat4 worldViewProjection;
+
+void main()
+{
+	TexCoords = -aPosition;
+	gl_Position = worldViewProjection * vec4(aPosition, 1.0);
+}
+
+#elif defined(FRAGMENT) ///////////////////////////////////////////////
+
+out vec4 FragColor;
+in vec3 TexCoords;
+
+uniform samplerCube skybox;
+
+void main()
+{
+	FragColor = texture(skybox, TexCoords);
+}
+
+#endif
+#endif

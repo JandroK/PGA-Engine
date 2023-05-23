@@ -376,6 +376,98 @@ void CheckFrameBufferStatus()
 	}
 }
 
+GLuint LoadCubemap(App* app)
+{
+	GLuint textureID;
+	glGenTextures(1, &textureID);
+	glBindTexture(GL_TEXTURE_CUBE_MAP, textureID);
+
+	int width, height, nrComponents;
+	std::vector<std::string> faces = {"Skybox/right.jpg", "Skybox/left.jpg", "Skybox/bottom.jpg", "Skybox/top.jpg", "Skybox/front.jpg", "Skybox/back.jpg"};
+	for (unsigned int i = 0; i < faces.size(); i++)
+	{
+		unsigned char* data = stbi_load(faces[i].c_str(), &width, &height, &nrComponents, 0);
+		if (data)
+		{
+			glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, 0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, data);
+			stbi_image_free(data);
+		}
+		else
+		{
+			ELOG("Cubemap tex failed to load at path: %s", faces[i]);
+			stbi_image_free(data);
+		}
+	}
+
+	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
+
+	return textureID;
+}
+
+void GenerateSkyboxVAO(App* app)
+{
+	float skyboxVertices[] = {
+		// positions          
+		-1.0f,  1.0f, -1.0f,
+		-1.0f, -1.0f, -1.0f,
+		 1.0f, -1.0f, -1.0f,
+		 1.0f, -1.0f, -1.0f,
+		 1.0f,  1.0f, -1.0f,
+		-1.0f,  1.0f, -1.0f,
+
+		-1.0f, -1.0f,  1.0f,
+		-1.0f, -1.0f, -1.0f,
+		-1.0f,  1.0f, -1.0f,
+		-1.0f,  1.0f, -1.0f,
+		-1.0f,  1.0f,  1.0f,
+		-1.0f, -1.0f,  1.0f,
+
+		 1.0f, -1.0f, -1.0f,
+		 1.0f, -1.0f,  1.0f,
+		 1.0f,  1.0f,  1.0f,
+		 1.0f,  1.0f,  1.0f,
+		 1.0f,  1.0f, -1.0f,
+		 1.0f, -1.0f, -1.0f,
+
+		-1.0f, -1.0f,  1.0f,
+		-1.0f,  1.0f,  1.0f,
+		 1.0f,  1.0f,  1.0f,
+		 1.0f,  1.0f,  1.0f,
+		 1.0f, -1.0f,  1.0f,
+		-1.0f, -1.0f,  1.0f,
+
+		-1.0f,  1.0f, -1.0f,
+		 1.0f,  1.0f, -1.0f,
+		 1.0f,  1.0f,  1.0f,
+		 1.0f,  1.0f,  1.0f,
+		-1.0f,  1.0f,  1.0f,
+		-1.0f,  1.0f, -1.0f,
+
+		-1.0f, -1.0f, -1.0f,
+		-1.0f, -1.0f,  1.0f,
+		 1.0f, -1.0f, -1.0f,
+		 1.0f, -1.0f, -1.0f,
+		-1.0f, -1.0f,  1.0f,
+		 1.0f, -1.0f,  1.0f
+	};
+
+	// Skybox VAO
+	glGenVertexArrays(1, &app->skyboxVAO);
+	glGenBuffers(1, &app->skyboxVBO);
+	glBindVertexArray(app->skyboxVAO);
+	glBindBuffer(GL_ARRAY_BUFFER, app->skyboxVBO);
+	glBufferData(GL_ARRAY_BUFFER, sizeof(skyboxVertices), &skyboxVertices, GL_STATIC_DRAW);
+	glEnableVertexAttribArray(0);
+	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
+
+	//Unbinding
+	glBindVertexArray(0);
+}
+
 void Init(App* app)
 {
 	InicializeResources(app);
@@ -466,8 +558,17 @@ void Init(App* app)
 	LoadShader(app, app->texturedForwardGeometryProgramIdx);
 	app->programForwardUniformTexture = glGetUniformLocation(app->programs[app->texturedForwardGeometryProgramIdx].handle, "uTexture");
 
+	app->cubemapProgramIdx = LoadProgram(app, "shaders.glsl", "SHOW_CUBE_MAP");
+	LoadShader(app, app->cubemapProgramIdx);
+	app->cubemapuWorldViewProjection = glGetUniformLocation(app->programs[app->cubemapProgramIdx].handle, "worldViewProjection");
+	app->cubemapTexture = glGetUniformLocation(app->programs[app->cubemapProgramIdx].handle, "skybox");
+
 	app->mode = FORWARD;
 	app->currentMode = "Forward";
+
+	// Crate Skybox
+	app->skyboxID = LoadCubemap(app);
+	GenerateSkyboxVAO(app);
 }
 
 void LoadShader(App* app, u32 index)
@@ -1015,6 +1116,23 @@ void Render(App* app)
 
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 		glEnable(GL_DEPTH_TEST);
+
+		// CUBEMAP
+		glDepthMask(GL_FALSE);
+
+		Program& programCubemap = app->programs[app->cubemapProgramIdx];
+		glUseProgram(programCubemap.handle);
+		glBindVertexArray(app->skyboxVAO);
+
+		glm::mat4 view = glm::mat4(glm::mat3(app->camera.view));
+		glm::mat4 cubemapuWorldViewProjection = app->camera.projection * view;
+		glUniformMatrix4fv(app->cubemapuWorldViewProjection, 1, GL_FALSE, &cubemapuWorldViewProjection[0][0]);
+		glActiveTexture(GL_TEXTURE0);
+		glBindTexture(GL_TEXTURE_CUBE_MAP, app->skyboxID);		
+
+		glDrawArrays(GL_TRIANGLES, 0, 36);
+		glBindVertexArray(0);
+		glDepthMask(GL_TRUE);
 
 		// Indicate which shader we are going to use
 		Program& programTexturedGeometry = app->programs[app->texturedForwardGeometryProgramIdx];

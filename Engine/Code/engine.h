@@ -267,6 +267,7 @@ struct App
     u32 texturedDeferredGeometryProgramIdx;
     u32 texturedLightingProgramIdx;
     u32 debugLightsProgramIdx;
+    u32 cubemapProgramIdx;
     
     // texture indices
     u32 whiteTexIdx;
@@ -290,10 +291,13 @@ struct App
     GLint uGNormal;
     GLint uWorldViewProjection;
     GLint uDebugLightColor;
+    GLint cubemapTexture;
+    GLint cubemapuWorldViewProjection;
 
     // VAO object to link our screen filling quad with our textured quad shader
     GLuint vao;
-    GLuint quadVAO = 0;
+    GLuint skyboxVAO = 0;
+    GLuint skyboxVBO = 0;
 
     // Buffer handle
     Buffer uniformBuffer;
@@ -341,6 +345,9 @@ struct App
     std::vector<std::string> primitiveNames = { "Cube", "Sphere", "Cylinder", "Cone", "Torus", "Plane" };
     u32 sphereIndex;
     u32 quadIndex;
+
+    // Environmet Mapping
+    GLuint skyboxID;
 };
 
 void Init(App* app);
@@ -401,6 +408,10 @@ void RenderDebug(App* app);
 
 u32 LoadTexture2D(App* app, const char* filepath);
 
+GLuint LoadCubemap(App* app);
+
+void GenerateSkyboxVAO();
+
 GLuint FindVAO(Mesh& mesh, u32 submeshIndex, const Program& program);
 
 glm::mat4 TransformConstructor(const Transform t);
@@ -414,4 +425,3 @@ u8 GetComponentCount(const GLenum& type);
 Entity GeneratePrimitive(u32 primitiveIndex, std::string name);
 
 Light InstanceLight(LightType type, std::string name);
-
