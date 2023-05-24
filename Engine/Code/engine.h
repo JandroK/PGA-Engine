@@ -408,13 +408,15 @@ void OrbitCamera(App* app);
 
 void ZoomCamera(App* app);
 
+void ComputeCameraAxisDirection(Camera& cam);
+
 void RecalculateProjection(App* app, glm::vec2 size);
 
-void UniformBufferAlignment(App* app);
+void UniformBufferAlignment(App* app, Camera cam);
 
 void Render(App* app);
 
-void DrawScene(App* app, u32 programIdx, GLuint uTexture);
+void DrawScene(App* app, u32 programIdx, GLuint uTexture, GLuint fbo);
 
 void RenderQuad(App* app);
 
@@ -422,7 +424,11 @@ void RenderDebug(App* app);
 
 void RenderSkybox(App* app);
 
-void RenderWater(App* app);
+void FillRTWater(App* app);
+
+void PassWaterScene(App* app, Camera* cam, bool reflection, GLuint fbo);
+
+void RenderWaterShader(App* app);
 
 void RenderDeferredLights(App* app);
 

@@ -673,13 +673,13 @@ void InitCamera(App* app)
 {
 	app->camera.aspectRatio = (float)app->displaySize.x / (float)app->displaySize.y;
 	app->camera.zNear = 0.1f;
-	app->camera.zFar = 100.0f;
+	app->camera.zFar = 500.0f;
 	app->camera.FOV = 60.0f;
 
-	app->camera.position = vec3(25.0f, 15.0f, 30.0f);
+	app->camera.position = vec3(50.0f, 40.0f, 60.0f);
 	app->camera.target = vec3(0.0f, 13.0f, 0.0f);
 	app->camera.upWorld = vec3(0.0f, 1.0f, 0.0f);
-	app->camera.front = glm::normalize(vec3(-25.0f, -2.0f, -30.0f));
+	app->camera.front = glm::normalize(vec3(-50.0f, -28.0f, -60.0f));
 	app->camera.right = glm::normalize(glm::cross(app->camera.front, app->camera.upWorld));
 	app->camera.up = glm::normalize(glm::cross(app->camera.right, app->camera.front));
 	app->camera.projection = glm::perspective(glm::radians(app->camera.FOV), app->camera.aspectRatio, app->camera.zNear, app->camera.zFar);
@@ -995,8 +995,6 @@ void Update(App* app)
 
 	ZoomCamera(app);
 	MoveCamera(app);
-
-	UniformBufferAlignment(app);
 }
 
 void MoveCamera(App* app)
@@ -1032,14 +1030,7 @@ void LookAtCamera(App* app)
 		if (app->camera.pitch < -89.0f)
 			app->camera.pitch = -89.0f;
 
-		glm::vec3 direction;
-		direction.x = cos(glm::radians(app->camera.yaw)) * cos(glm::radians(app->camera.pitch));
-		direction.y = sin(glm::radians(app->camera.pitch));
-		direction.z = sin(glm::radians(app->camera.yaw)) * cos(glm::radians(app->camera.pitch));
-
-		app->camera.front = glm::normalize(direction);
-		app->camera.right = glm::normalize(glm::cross(app->camera.front, app->camera.upWorld));
-		app->camera.up = glm::normalize(glm::cross(app->camera.right, app->camera.front));
+		ComputeCameraAxisDirection(app->camera);
 	}
 }
 
@@ -1100,7 +1091,19 @@ void ZoomCamera(App* app)
 	}
 }
 
-void UniformBufferAlignment(App* app)
+void ComputeCameraAxisDirection(Camera& cam)
+{
+	glm::vec3 direction;
+	direction.x = cos(glm::radians(cam.yaw)) * cos(glm::radians(cam.pitch));
+	direction.y = sin(glm::radians(cam.pitch));
+	direction.z = sin(glm::radians(cam.yaw)) * cos(glm::radians(cam.pitch));
+
+	cam.front = glm::normalize(direction);
+	cam.right = glm::normalize(glm::cross(cam.front, cam.upWorld));
+	cam.up = glm::normalize(glm::cross(cam.right, cam.front));
+}
+
+void UniformBufferAlignment(App* app, Camera cam)
 {
 	glBindBuffer(GL_UNIFORM_BUFFER, app->uniformBuffer.handle);
 	app->uniformBuffer.data = (u8*)glMapBuffer(GL_UNIFORM_BUFFER, GL_WRITE_ONLY);
@@ -1109,7 +1112,7 @@ void UniformBufferAlignment(App* app)
 	// Global params
 	app->globalParamsOffset = app->uniformBuffer.head;
 
-	PushVec3(app->uniformBuffer, app->camera.position);
+	PushVec3(app->uniformBuffer, cam.position);
 	PushUInt(app->uniformBuffer, app->lights.size());
 
 	for (u32 i = 0; i < app->lights.size(); ++i)
@@ -1133,7 +1136,7 @@ void UniformBufferAlignment(App* app)
 		AlignHead(app->uniformBuffer, app->uniformBufferAlignment);
 		Entity& entity = app->entities[i];
 		glm::mat4 world = entity.worldMatrix;
-		glm::mat4 worldViewProjection = app->camera.projection * app->camera.view * world;
+		glm::mat4 worldViewProjection = cam.projection * cam.view * world;
 
 		entity.localParamsOffset = app->uniformBuffer.head;
 		PushMat4(app->uniformBuffer, world);
@@ -1175,30 +1178,35 @@ void Render(App* app)
 	}
 	case FORWARD:
 	{
+		// Fill water render textures 
+		FillRTWater(app);
 		// Render World
-		DrawScene(app, app->texturedForwardGeometryProgramIdx, app->programForwardUniformTexture);
+		DrawScene(app, app->texturedForwardGeometryProgramIdx, app->programForwardUniformTexture, app->gBuffer);
 		// Debug lights
 		RenderDebug(app);
 		// Cubemap
 		RenderSkybox(app);
 		// Water
-		RenderWater(app);
+		RenderWaterShader(app);
 
 		// Render on screen again
 		glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
 		break;
 	}
 	case DEFERRED:
 	{
+		// Fill water render textures 
+		FillRTWater(app);
+
 		// Render World
-		DrawScene(app, app->texturedDeferredGeometryProgramIdx, app->programDeferredUniformTexture);
+		DrawScene(app, app->texturedDeferredGeometryProgramIdx, app->programDeferredUniformTexture, app->gBuffer);
 
 		if (app->currentRenderTarget != "Final")
 		{
 			RenderSkybox(app);	
-			RenderWater(app);
+			RenderWaterShader(app);
 		}
-		// Render on screen again
 		glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
 		///////////////////////////////////////////////// Lighting pass ////////////////////////////////////////
@@ -1208,10 +1216,10 @@ void Render(App* app)
 		if (app->currentRenderTarget == "Final")
 		{
 			RenderSkybox(app);
-			RenderWater(app);
+			RenderWaterShader(app);			
 		}
-
 		glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
 		break;
 	}
 	default:
@@ -1219,7 +1227,7 @@ void Render(App* app)
 	}
 }
 
-void DrawScene(App* app, u32 programIdx, GLuint uTexture)
+void DrawScene(App* app, u32 programIdx, GLuint uTexture, GLuint fbo)
 {
 	// Clean screen
 	glClearColor(0.1, 0.1, 0.1, 1.0);
@@ -1229,7 +1237,7 @@ void DrawScene(App* app, u32 programIdx, GLuint uTexture)
 	glViewport(0, 0, app->displaySize.x, app->displaySize.y);
 
 	// Render on this framebuffer render target
-	glBindFramebuffer(GL_FRAMEBUFFER, app->gBuffer);
+	glBindFramebuffer(GL_FRAMEBUFFER, fbo);
 
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 	glEnable(GL_DEPTH_TEST);
@@ -1388,7 +1396,48 @@ void RenderSkybox(App* app)
 	glDepthFunc(GL_LESS);
 }
 
-void RenderWater(App* app)
+void FillRTWater(App* app)
+{
+	//////////////////////////////////////////////////// REFLECTION /////////////////////////////////////
+	// Render on this framebuffer render target
+	glBindFramebuffer(GL_FRAMEBUFFER, app->fboReflection);
+
+	Camera reflectionCam = app->camera;
+	reflectionCam.position.y *= -1;
+	reflectionCam.pitch *= -1;
+	ComputeCameraAxisDirection(reflectionCam);
+	reflectionCam.view = glm::lookAt(reflectionCam.position, reflectionCam.position + reflectionCam.front, reflectionCam.up);
+
+	UniformBufferAlignment(app, reflectionCam);
+
+	PassWaterScene(app, &reflectionCam, true, app->fboReflection);
+	glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
+	//////////////////////////////////////////////////// REFRACTION /////////////////////////////////////
+	// Render on this framebuffer render target
+	glBindFramebuffer(GL_FRAMEBUFFER, app->fboRefraction);
+
+	Camera refractionCam = app->camera;
+	UniformBufferAlignment(app, refractionCam);
+	PassWaterScene(app, &refractionCam, false, app->fboRefraction);
+	
+	glBindFramebuffer(GL_FRAMEBUFFER, 0);
+}
+
+void PassWaterScene(App* app, Camera* cam, bool reflection, GLuint fbo)
+{
+	glEnable(GL_DEPTH_TEST);
+	glEnable(GL_CLIP_DISTANCE0);
+
+	if (app->mode == FORWARD)
+		DrawScene(app, app->texturedForwardGeometryProgramIdx, app->programForwardUniformTexture, fbo);
+	else
+		DrawScene(app, app->texturedDeferredGeometryProgramIdx, app->programDeferredUniformTexture, fbo);
+
+	glDisable(GL_CLIP_DISTANCE0);
+}
+
+void RenderWaterShader(App* app)
 {
 	//Water effect
 	Program& programWater = app->programs[app->waterProgramIdx];
@@ -1398,7 +1447,7 @@ void RenderWater(App* app)
 	Mesh& mesh = app->meshes[app->models[app->quadIndex].meshIdx];
 	GLuint vao = FindVAO(mesh, 0, programWater);
 
-	glm::mat4 model = TransformConstructor(Transform());
+	glm::mat4 model = TransformConstructor(Transform(vec3(0.0), vec3(0.0), vec3(4.0)));
 	model = app->camera.projection * app->camera.view * model;
 
 	glBindVertexArray(vao);

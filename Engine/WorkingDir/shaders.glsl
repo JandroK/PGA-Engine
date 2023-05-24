@@ -79,7 +79,7 @@ layout(location = 3) out vec4 oDepth;
 
 // Same values of camara parameters
 float near = 0.1; 
-float far  = 100.0; 
+float far  = 500.0; 
   
 float LinearizeDepth(float depth) 
 {
