@@ -1103,7 +1103,7 @@ void ComputeCameraAxisDirection(Camera& cam)
 	cam.up = glm::normalize(glm::cross(cam.right, cam.front));
 }
 
-void UniformBufferAlignment(App* app, Camera cam)
+void UniformBufferAlignment(App* app, Camera cam, bool reflection)
 {
 	glBindBuffer(GL_UNIFORM_BUFFER, app->uniformBuffer.handle);
 	app->uniformBuffer.data = (u8*)glMapBuffer(GL_UNIFORM_BUFFER, GL_WRITE_ONLY);
@@ -1129,6 +1129,16 @@ void UniformBufferAlignment(App* app, Camera cam)
 	}
 
 	app->globalParamsSize = app->uniformBuffer.head - app->globalParamsOffset;
+
+	// Clipping Plane
+	app->clippingPlaneOffset = app->uniformBuffer.head;
+	PushVec3(app->uniformBuffer, cam.view * vec4(0.0, 0.0, 0.0, 1.0));
+	if (reflection)
+		PushVec4(app->uniformBuffer, vec4(0.0, 1.0, 0.0, 0.0));
+	else
+		PushVec4(app->uniformBuffer, vec4(0.0, -1.0, 0.0, 0.0));
+
+	app->clippingPlaneSize = app->uniformBuffer.head - app->clippingPlaneOffset;
 
 	// Local Params
 	for (u32 i = 0; i < app->entities.size(); ++i)
@@ -1254,6 +1264,7 @@ void DrawScene(App* app, u32 programIdx, GLuint uTexture, GLuint fbo)
 		if(app->mode == FORWARD)
 			glBindBufferRange(GL_UNIFORM_BUFFER, BINDING(0), app->uniformBuffer.handle, app->globalParamsOffset, app->globalParamsSize);
 		glBindBufferRange(GL_UNIFORM_BUFFER, BINDING(1), app->uniformBuffer.handle, entity.localParamsOffset, entity.localParamsSize);
+		glBindBufferRange(GL_UNIFORM_BUFFER, BINDING(2), app->uniformBuffer.handle, app->clippingPlaneOffset, app->clippingPlaneSize);
 
 		for (u32 i = 0; i < mesh.submeshes.size(); ++i)
 		{
@@ -1408,9 +1419,10 @@ void FillRTWater(App* app)
 	ComputeCameraAxisDirection(reflectionCam);
 	reflectionCam.view = glm::lookAt(reflectionCam.position, reflectionCam.position + reflectionCam.front, reflectionCam.up);
 
-	UniformBufferAlignment(app, reflectionCam);
+	UniformBufferAlignment(app, reflectionCam, true);
 
-	PassWaterScene(app, &reflectionCam, true, app->fboReflection);
+	PassWaterScene(app, app->fboReflection);
+	RenderSkybox(app);
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
 	//////////////////////////////////////////////////// REFRACTION /////////////////////////////////////
@@ -1418,13 +1430,13 @@ void FillRTWater(App* app)
 	glBindFramebuffer(GL_FRAMEBUFFER, app->fboRefraction);
 
 	Camera refractionCam = app->camera;
-	UniformBufferAlignment(app, refractionCam);
-	PassWaterScene(app, &refractionCam, false, app->fboRefraction);
+	UniformBufferAlignment(app, refractionCam, false);
+	PassWaterScene(app, app->fboRefraction);
 	
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 }
 
-void PassWaterScene(App* app, Camera* cam, bool reflection, GLuint fbo)
+void PassWaterScene(App* app, GLuint fbo)
 {
 	glEnable(GL_DEPTH_TEST);
 	glEnable(GL_CLIP_DISTANCE0);

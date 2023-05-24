@@ -337,6 +337,8 @@ struct App
     // GlobalParams
     u32 globalParamsSize;
     u32 globalParamsOffset;
+    u32 clippingPlaneSize;
+    u32 clippingPlaneOffset;
 
     // GlInfo
     OpenGLInfo glInfo;
@@ -412,7 +414,7 @@ void ComputeCameraAxisDirection(Camera& cam);
 
 void RecalculateProjection(App* app, glm::vec2 size);
 
-void UniformBufferAlignment(App* app, Camera cam);
+void UniformBufferAlignment(App* app, Camera cam, bool reflection);
 
 void Render(App* app);
 
@@ -426,7 +428,7 @@ void RenderSkybox(App* app);
 
 void FillRTWater(App* app);
 
-void PassWaterScene(App* app, Camera* cam, bool reflection, GLuint fbo);
+void PassWaterScene(App* app, GLuint fbo);
 
 void RenderWaterShader(App* app);
 
