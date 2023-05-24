@@ -354,6 +354,73 @@ void GenerateRenderTextures(App* app)
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 }
 
+void GenerateRenderTexturesWater(App* app)
+{
+	// Reflection Texture
+	glGenTextures(1, &app->rtReflection);
+	glBindTexture(GL_TEXTURE_2D, app->rtReflection);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, app->displaySize.x, app->displaySize.y, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+	glBindTexture(GL_TEXTURE_2D, 0);
+
+	// Refraction Texture
+	glGenTextures(1, &app->rtRefraction);
+	glBindTexture(GL_TEXTURE_2D, app->rtRefraction);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, app->displaySize.x, app->displaySize.y, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+	glBindTexture(GL_TEXTURE_2D, 0);
+
+	// Depth Component
+	glGenTextures(1, &app->rtReflectionDepth);
+	glBindTexture(GL_TEXTURE_2D, app->rtReflectionDepth);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT24, app->displaySize.x, app->displaySize.y, 0, GL_DEPTH_COMPONENT, GL_FLOAT, NULL);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+	glBindTexture(GL_TEXTURE_2D, 0);
+
+	// Depth Component
+	glGenTextures(1, &app->rtRefractionDepth);
+	glBindTexture(GL_TEXTURE_2D, app->rtRefractionDepth);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT24, app->displaySize.x, app->displaySize.y, 0, GL_DEPTH_COMPONENT, GL_FLOAT, NULL);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+	glBindTexture(GL_TEXTURE_2D, 0);
+
+	glGenFramebuffers(1, &app->fboReflection);
+	glBindFramebuffer(GL_FRAMEBUFFER, app->fboReflection);
+	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, app->rtReflection, 0);
+	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, app->rtReflectionDepth, 0);
+
+	CheckFrameBufferStatus();
+
+	// Select on which render target to draw
+	GLuint drawReflections[] = { GL_COLOR_ATTACHMENT0 };
+	glDrawBuffers(ARRAY_COUNT(drawReflections), drawReflections);
+	glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
+	glGenFramebuffers(1, &app->fboRefraction);
+	glBindFramebuffer(GL_FRAMEBUFFER, app->fboRefraction);
+	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, app->rtRefraction, 0);
+	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, app->rtRefractionDepth, 0);
+
+	CheckFrameBufferStatus();
+
+	// Select on which render target to draw
+	GLuint drawRefractions[] = { GL_COLOR_ATTACHMENT0 };
+	glDrawBuffers(ARRAY_COUNT(drawRefractions), drawRefractions);
+	glBindFramebuffer(GL_FRAMEBUFFER, 0);
+}
+
 void CheckFrameBufferStatus()
 {
 	GLenum framebufferStatus = glCheckFramebufferStatus(GL_FRAMEBUFFER);
@@ -485,6 +552,10 @@ void Init(App* app)
 	// Crating uniform buffers
 	CreateUniformBuffers(app);
 
+	// Crate Skybox
+	app->skyboxID = LoadCubemap(app);
+	GenerateSkyboxVAO(app);
+
 	// Loading Models
 	for (int i = 0; i < app->primitiveNames.size(); i++)
 	{
@@ -563,12 +634,12 @@ void Init(App* app)
 	app->cubemapuWorldViewProjection = glGetUniformLocation(app->programs[app->cubemapProgramIdx].handle, "worldViewProjection");
 	app->cubemapTexture = glGetUniformLocation(app->programs[app->cubemapProgramIdx].handle, "skybox");
 
+	app->waterProgramIdx = LoadProgram(app, "shaders.glsl", "SHOW_WATER");
+	LoadShader(app, app->waterProgramIdx);
+	app->wateruWorldViewProjection = glGetUniformLocation(app->programs[app->waterProgramIdx].handle, "worldViewProjection");
+
 	app->mode = FORWARD;
 	app->currentMode = "Forward";
-
-	// Crate Skybox
-	app->skyboxID = LoadCubemap(app);
-	GenerateSkyboxVAO(app);
 }
 
 void LoadShader(App* app, u32 index)
@@ -1104,55 +1175,14 @@ void Render(App* app)
 	}
 	case FORWARD:
 	{
-		// Clean screen
-		glClearColor(0.1, 0.1, 0.1, 1.0);
-		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
-		// Indicate to OpneGL the screen size in the current frame
-		glViewport(0, 0, app->displaySize.x, app->displaySize.y);
-
-		// Render on this framebuffer render target
-		glBindFramebuffer(GL_FRAMEBUFFER, app->gBuffer);
-
-		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-		glEnable(GL_DEPTH_TEST);
-
-		// Indicate which shader we are going to use
-		Program& programTexturedGeometry = app->programs[app->texturedForwardGeometryProgramIdx];
-		glUseProgram(programTexturedGeometry.handle);
-
-		for (Entity entity : app->entities)
-		{
-			Model& model = app->models[entity.modelIndex];
-			Mesh& mesh = app->meshes[model.meshIdx];
-
-			glBindBufferRange(GL_UNIFORM_BUFFER, BINDING(0), app->uniformBuffer.handle, app->globalParamsOffset, app->globalParamsSize);
-			glBindBufferRange(GL_UNIFORM_BUFFER, BINDING(1), app->uniformBuffer.handle, entity.localParamsOffset, entity.localParamsSize);
-
-			for (u32 i = 0; i < mesh.submeshes.size(); ++i)
-			{
-				GLuint vao = FindVAO(mesh, i, programTexturedGeometry);
-				glBindVertexArray(vao);
-				u32 submeshMaterialIdx = model.materialIdx[i];
-				Material& submeshMaterial = app->materials[submeshMaterialIdx];
-
-				glActiveTexture(GL_TEXTURE0);
-				GLuint textureHandle = app->textures[submeshMaterial.albedoTextureIdx].handle;
-				glBindTexture(GL_TEXTURE_2D, textureHandle);
-				glUniform1i(app->programForwardUniformTexture, 0);
-
-				Submesh& submesh = mesh.submeshes[i];
-				glDrawElements(GL_TRIANGLES, submesh.indices.size(), GL_UNSIGNED_INT, (void*)(u64)submesh.indexOffset);
-
-				glBindVertexArray(0);
-			}
-		}
-		glUseProgram(0);
-
+		// Render World
+		DrawForwardScene(app);
 		// Debug lights
 		RenderDebug(app);
 		// Cubemap
 		RenderSkybox(app);
+		// Water
+		RenderWater(app);
 
 		// Render on screen again
 		glBindFramebuffer(GL_FRAMEBUFFER, 0);
@@ -1203,53 +1233,77 @@ void Render(App* app)
 				glBindVertexArray(0);
 			}
 		}
-
 		glUseProgram(0);
 
 		if (app->currentRenderTarget != "Final")
-		{
-			// Cubemap
-			RenderSkybox(app);
-		}		
-
+			RenderSkybox(app);	
 		// Render on screen again
 		glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
 		///////////////////////////////////////////////// Lighting pass ////////////////////////////////////////
-		// Render on this framebuffer render target
-		glBindFramebuffer(GL_FRAMEBUFFER, app->lightBuffer);
-
-		glClearColor(0.1, 0.1, 0.1, 1.0);
-		glClear(GL_COLOR_BUFFER_BIT);
-
-		// Indicate which shader we are going to use
-		Program& programTexturedLighting = app->programs[app->texturedLightingProgramIdx];
-		glUseProgram(programTexturedLighting.handle);
-
-		RenderQuad(app);
-
-		glBindFramebuffer(GL_READ_FRAMEBUFFER, app->gBuffer);
-		glBindFramebuffer(GL_DRAW_FRAMEBUFFER, app->lightBuffer);
-
-		glBlitFramebuffer(0, 0, app->displaySize.x, app->displaySize.x, 0, 0, app->displaySize.x, app->displaySize.x, GL_DEPTH_BUFFER_BIT, GL_NEAREST);
-		glUseProgram(0);
-
+		RenderDeferredLights(app);
 		// Debug lights
-		RenderDebug(app);
-		
+		RenderDebug(app);		
 		if (app->currentRenderTarget == "Final")
-		{
-			// Cubemap
 			RenderSkybox(app);
-		}
+
+		// Water
+		RenderWater(app);
 
 		glBindFramebuffer(GL_FRAMEBUFFER, 0);
-
 		break;
 	}
 	default:
 		break;
 	}
+}
+
+void DrawForwardScene(App* app)
+{
+	// Clean screen
+	glClearColor(0.1, 0.1, 0.1, 1.0);
+	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+	// Indicate to OpneGL the screen size in the current frame
+	glViewport(0, 0, app->displaySize.x, app->displaySize.y);
+
+	// Render on this framebuffer render target
+	glBindFramebuffer(GL_FRAMEBUFFER, app->gBuffer);
+
+	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+	glEnable(GL_DEPTH_TEST);
+
+	// Indicate which shader we are going to use
+	Program& programTexturedGeometry = app->programs[app->texturedForwardGeometryProgramIdx];
+	glUseProgram(programTexturedGeometry.handle);
+
+	for (Entity entity : app->entities)
+	{
+		Model& model = app->models[entity.modelIndex];
+		Mesh& mesh = app->meshes[model.meshIdx];
+
+		glBindBufferRange(GL_UNIFORM_BUFFER, BINDING(0), app->uniformBuffer.handle, app->globalParamsOffset, app->globalParamsSize);
+		glBindBufferRange(GL_UNIFORM_BUFFER, BINDING(1), app->uniformBuffer.handle, entity.localParamsOffset, entity.localParamsSize);
+
+		for (u32 i = 0; i < mesh.submeshes.size(); ++i)
+		{
+			GLuint vao = FindVAO(mesh, i, programTexturedGeometry);
+			glBindVertexArray(vao);
+			u32 submeshMaterialIdx = model.materialIdx[i];
+			Material& submeshMaterial = app->materials[submeshMaterialIdx];
+
+			glActiveTexture(GL_TEXTURE0);
+			GLuint textureHandle = app->textures[submeshMaterial.albedoTextureIdx].handle;
+			glBindTexture(GL_TEXTURE_2D, textureHandle);
+			glUniform1i(app->programForwardUniformTexture, 0);
+
+			Submesh& submesh = mesh.submeshes[i];
+			glDrawElements(GL_TRIANGLES, submesh.indices.size(), GL_UNSIGNED_INT, (void*)(u64)submesh.indexOffset);
+
+			glBindVertexArray(0);
+		}
+	}
+	glUseProgram(0);
 }
 
 void RenderQuad(App* app)
@@ -1276,6 +1330,27 @@ void RenderQuad(App* app)
 	// Draw
 	glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_SHORT, 0);
 	glBindVertexArray(0);
+}
+
+void RenderDeferredLights(App* app)
+{
+	// Render on this framebuffer render target
+	glBindFramebuffer(GL_FRAMEBUFFER, app->lightBuffer);
+
+	glClearColor(0.1, 0.1, 0.1, 1.0);
+	glClear(GL_COLOR_BUFFER_BIT);
+
+	// Indicate which shader we are going to use
+	Program& programTexturedLighting = app->programs[app->texturedLightingProgramIdx];
+	glUseProgram(programTexturedLighting.handle);
+
+	RenderQuad(app);
+
+	glBindFramebuffer(GL_READ_FRAMEBUFFER, app->gBuffer);
+	glBindFramebuffer(GL_DRAW_FRAMEBUFFER, app->lightBuffer);
+
+	glBlitFramebuffer(0, 0, app->displaySize.x, app->displaySize.x, 0, 0, app->displaySize.x, app->displaySize.x, GL_DEPTH_BUFFER_BIT, GL_NEAREST);
+	glUseProgram(0);
 }
 
 void RenderDebug(App* app)
@@ -1329,6 +1404,7 @@ void RenderDebug(App* app)
 
 	glUseProgram(0);
 }
+
 // CUBEMAP
 void RenderSkybox(App* app)
 {
@@ -1347,6 +1423,28 @@ void RenderSkybox(App* app)
 	glDrawArrays(GL_TRIANGLES, 0, 36);
 	glBindVertexArray(0);
 	glDepthFunc(GL_LESS);
+}
+
+void RenderWater(App* app)
+{
+	//Water effect
+	Program& programWater = app->programs[app->waterProgramIdx];
+	glUseProgram(programWater.handle);
+
+	// Debug Pivot Target
+	Mesh& mesh = app->meshes[app->models[app->quadIndex].meshIdx];
+	GLuint vao = FindVAO(mesh, 0, programWater);
+
+	glm::mat4 model = TransformConstructor(Transform());
+	model = app->camera.projection * app->camera.view * model;
+
+	glBindVertexArray(vao);
+	glUniformMatrix4fv(app->wateruWorldViewProjection, 1, GL_FALSE, &model[0][0]);
+
+	glDrawElements(GL_TRIANGLES, mesh.submeshes[0].indices.size(), GL_UNSIGNED_INT, 0);
+	glBindVertexArray(0);
+
+	glUseProgram(0);
 }
 
 GLuint FindVAO(Mesh& mesh, u32 submeshIndex, const Program& program)

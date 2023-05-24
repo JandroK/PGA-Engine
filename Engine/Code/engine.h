@@ -268,6 +268,7 @@ struct App
     u32 texturedLightingProgramIdx;
     u32 debugLightsProgramIdx;
     u32 cubemapProgramIdx;
+    u32 waterProgramIdx;
     
     // texture indices
     u32 whiteTexIdx;
@@ -293,6 +294,7 @@ struct App
     GLint uDebugLightColor;
     GLint cubemapTexture;
     GLint cubemapuWorldViewProjection;
+    GLint wateruWorldViewProjection;
 
     // VAO object to link our screen filling quad with our textured quad shader
     GLuint vao;
@@ -312,9 +314,17 @@ struct App
     GLuint positionAttachmentTexture;
     GLuint finalAttachmentTexture;
 
+    // Water color attachments
+    GLuint rtReflection;
+    GLuint rtReflectionDepth;
+    GLuint rtRefraction;
+    GLuint rtRefractionDepth;
+
     // Frame buffers
     GLuint gBuffer;
     GLuint lightBuffer;
+    GLuint fboReflection;
+    GLuint fboRefraction;
 
     // Render Mode
     std::vector<std::string> renderModes = {"Forward", "Deferred"};
@@ -353,6 +363,8 @@ struct App
 void Init(App* app);
 
 void GenerateRenderTextures(App* app);
+
+void GenerateRenderTexturesWater(App* app);
 
 void CheckFrameBufferStatus();
 
@@ -402,11 +414,17 @@ void UniformBufferAlignment(App* app);
 
 void Render(App* app);
 
+void DrawForwardScene(App* app);
+
 void RenderQuad(App* app);
 
 void RenderDebug(App* app);
 
 void RenderSkybox(App* app);
+
+void RenderWater(App* app);
+
+void RenderDeferredLights(App* app);
 
 u32 LoadTexture2D(App* app, const char* filepath);
 
