@@ -1176,7 +1176,7 @@ void Render(App* app)
 	case FORWARD:
 	{
 		// Render World
-		DrawForwardScene(app);
+		DrawScene(app, app->texturedForwardGeometryProgramIdx, app->programForwardUniformTexture);
 		// Debug lights
 		RenderDebug(app);
 		// Cubemap
@@ -1190,53 +1190,14 @@ void Render(App* app)
 	}
 	case DEFERRED:
 	{
-		// Clean screen
-		glClearColor(0.1, 0.1, 0.1, 0.0);
-		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
-		// Indicate to OpneGL the screen size in the current frame
-		glViewport(0, 0, app->displaySize.x, app->displaySize.y);
-		///////////////////////////////////////////////// Geometry pass ////////////////////////////////////////
-
-		// Render on this framebuffer render target
-		glBindFramebuffer(GL_FRAMEBUFFER, app->gBuffer);
-
-		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-		glEnable(GL_DEPTH_TEST);
-
-		// Indicate which shader we are going to use
-		Program& programTexturedGeometry = app->programs[app->texturedDeferredGeometryProgramIdx];
-		glUseProgram(programTexturedGeometry.handle);
-
-		for (Entity entity : app->entities)
-		{
-			Model& model = app->models[entity.modelIndex];
-			Mesh& mesh = app->meshes[model.meshIdx];
-
-			glBindBufferRange(GL_UNIFORM_BUFFER, BINDING(1), app->uniformBuffer.handle, entity.localParamsOffset, entity.localParamsSize);
-
-			for (u32 i = 0; i < mesh.submeshes.size(); ++i)
-			{
-				GLuint vao = FindVAO(mesh, i, programTexturedGeometry);
-				glBindVertexArray(vao);
-				u32 submeshMaterialIdx = model.materialIdx[i];
-				Material& submeshMaterial = app->materials[submeshMaterialIdx];
-
-				glActiveTexture(GL_TEXTURE0);
-				GLuint textureHandle = app->textures[submeshMaterial.albedoTextureIdx].handle;
-				glBindTexture(GL_TEXTURE_2D, textureHandle);
-				glUniform1i(app->programDeferredUniformTexture, 0);
-
-				Submesh& submesh = mesh.submeshes[i];
-				glDrawElements(GL_TRIANGLES, submesh.indices.size(), GL_UNSIGNED_INT, (void*)(u64)submesh.indexOffset);
-
-				glBindVertexArray(0);
-			}
-		}
-		glUseProgram(0);
+		// Render World
+		DrawScene(app, app->texturedDeferredGeometryProgramIdx, app->programDeferredUniformTexture);
 
 		if (app->currentRenderTarget != "Final")
+		{
 			RenderSkybox(app);	
+			RenderWater(app);
+		}
 		// Render on screen again
 		glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
@@ -1245,10 +1206,10 @@ void Render(App* app)
 		// Debug lights
 		RenderDebug(app);		
 		if (app->currentRenderTarget == "Final")
+		{
 			RenderSkybox(app);
-
-		// Water
-		RenderWater(app);
+			RenderWater(app);
+		}
 
 		glBindFramebuffer(GL_FRAMEBUFFER, 0);
 		break;
@@ -1258,7 +1219,7 @@ void Render(App* app)
 	}
 }
 
-void DrawForwardScene(App* app)
+void DrawScene(App* app, u32 programIdx, GLuint uTexture)
 {
 	// Clean screen
 	glClearColor(0.1, 0.1, 0.1, 1.0);
@@ -1274,7 +1235,7 @@ void DrawForwardScene(App* app)
 	glEnable(GL_DEPTH_TEST);
 
 	// Indicate which shader we are going to use
-	Program& programTexturedGeometry = app->programs[app->texturedForwardGeometryProgramIdx];
+	Program& programTexturedGeometry = app->programs[programIdx];
 	glUseProgram(programTexturedGeometry.handle);
 
 	for (Entity entity : app->entities)
@@ -1282,7 +1243,8 @@ void DrawForwardScene(App* app)
 		Model& model = app->models[entity.modelIndex];
 		Mesh& mesh = app->meshes[model.meshIdx];
 
-		glBindBufferRange(GL_UNIFORM_BUFFER, BINDING(0), app->uniformBuffer.handle, app->globalParamsOffset, app->globalParamsSize);
+		if(app->mode == FORWARD)
+			glBindBufferRange(GL_UNIFORM_BUFFER, BINDING(0), app->uniformBuffer.handle, app->globalParamsOffset, app->globalParamsSize);
 		glBindBufferRange(GL_UNIFORM_BUFFER, BINDING(1), app->uniformBuffer.handle, entity.localParamsOffset, entity.localParamsSize);
 
 		for (u32 i = 0; i < mesh.submeshes.size(); ++i)
@@ -1295,7 +1257,8 @@ void DrawForwardScene(App* app)
 			glActiveTexture(GL_TEXTURE0);
 			GLuint textureHandle = app->textures[submeshMaterial.albedoTextureIdx].handle;
 			glBindTexture(GL_TEXTURE_2D, textureHandle);
-			glUniform1i(app->programForwardUniformTexture, 0);
+
+			glUniform1i(uTexture, 0);
 
 			Submesh& submesh = mesh.submeshes[i];
 			glDrawElements(GL_TRIANGLES, submesh.indices.size(), GL_UNSIGNED_INT, (void*)(u64)submesh.indexOffset);

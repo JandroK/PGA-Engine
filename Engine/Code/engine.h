@@ -414,7 +414,7 @@ void UniformBufferAlignment(App* app);
 
 void Render(App* app);
 
-void DrawForwardScene(App* app);
+void DrawScene(App* app, u32 programIdx, GLuint uTexture);
 
 void RenderQuad(App* app);
 
