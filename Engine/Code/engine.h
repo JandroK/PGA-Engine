@@ -360,6 +360,9 @@ struct App
 
     // Environmet Mapping
     GLuint skyboxID;
+
+    // Water
+    Transform waterTransform;
 };
 
 void Init(App* app);

@@ -545,6 +545,7 @@ void Init(App* app)
 
 	// FRAMEBUFFERS
 	GenerateRenderTextures(app);
+	GenerateRenderTexturesWater(app);
 
 	// Init Camera
 	InitCamera(app);
@@ -572,6 +573,8 @@ void Init(App* app)
 	e.name = "House";
 
 	app->entities.push_back(e);
+
+	app->waterTransform.scale = vec3(4.0f);
 
 	// Create light
 	Light lDir = InstanceLight(DIRECTIONAL_LIGHT, "Directional Light 0");
@@ -738,9 +741,11 @@ void Gui(App* app)
 	// Inspector Transform
 	ImGui::Begin("Inspector Transform");
 
+	// Generate dynamicaly primitives and lights
 	GuiPrimitives(app);
 	GuiLightsInstance(app);
 
+	// Choose Render mode between Forward and Deferred
 	ImGui::NewLine();
 	ImGui::Text("Render Mode:");
 	if (ImGui::BeginCombo("##RenderMode", app->currentMode.c_str()))
@@ -760,6 +765,7 @@ void Gui(App* app)
 		ImGui::EndCombo();
 	}
 
+	// If mode is deferred choose render texture
 	if (app->mode == DEFERRED)
 	{
 		ImGui::NewLine();
@@ -783,17 +789,31 @@ void Gui(App* app)
 		ImGui::NewLine();
 	}
 
+	// Edit pivot point around camera orbit
 	ImGui::Text("Pivot Point: ");
 	glm::vec3& position = app->camera.target;
 	ImGui::DragFloat3("##Pivot Point", &position[0], 0.5f, true);
 	ImGui::NewLine();
 
+	// Edit position and scale of water plane
+	if (ImGui::CollapsingHeader("Water Plane", ImGuiTreeNodeFlags_DefaultOpen))
+	{
+		ImGui::Text("Position: ");
+		glm::vec3& waterPosition = app->waterTransform.position;
+		ImGui::DragFloat3("##Position", &waterPosition[0], 0.5f, true);
+
+		ImGui::Text("Scale: ");
+		glm::vec3& waterScale = app->waterTransform.scale;
+		ImGui::DragFloat3("##Scale", &waterScale[0], 0.01f, 0.00001f, 10000.0f);
+	}
+
+	// Transform components of primitives and lights
 	GuiEntities(app);
 	GuiLights(app);
 
 	ImGui::End();
 
-	// Scene
+	// Render Scene on ImGui window
 	if (ImGui::Begin("Scene"))
 	{
 		ImVec2 size = ImGui::GetContentRegionAvail();
@@ -1127,18 +1147,7 @@ void UniformBufferAlignment(App* app, Camera cam, bool reflection)
 		PushFloat(app->uniformBuffer, light.radius);
 		PushFloat(app->uniformBuffer, light.intensity);
 	}
-
 	app->globalParamsSize = app->uniformBuffer.head - app->globalParamsOffset;
-
-	// Clipping Plane
-	app->clippingPlaneOffset = app->uniformBuffer.head;
-	PushVec3(app->uniformBuffer, cam.view * vec4(0.0, 0.0, 0.0, 1.0));
-	if (reflection)
-		PushVec4(app->uniformBuffer, vec4(0.0, 1.0, 0.0, 0.0));
-	else
-		PushVec4(app->uniformBuffer, vec4(0.0, -1.0, 0.0, 0.0));
-
-	app->clippingPlaneSize = app->uniformBuffer.head - app->clippingPlaneOffset;
 
 	// Local Params
 	for (u32 i = 0; i < app->entities.size(); ++i)
@@ -1153,6 +1162,17 @@ void UniformBufferAlignment(App* app, Camera cam, bool reflection)
 		PushMat4(app->uniformBuffer, worldViewProjection);
 		entity.localParamsSize = app->uniformBuffer.head - entity.localParamsOffset;
 	}
+
+	// Clipping Plane
+	AlignHead(app->uniformBuffer, app->uniformBufferAlignment);
+	app->clippingPlaneOffset = app->uniformBuffer.head;
+	//PushVec3(app->uniformBuffer, cam.view * vec4(0.0, 0.0, 0.0, 1.0));
+	if (reflection)
+		PushVec4(app->uniformBuffer, vec4(0.0, 1.0, 0.0, -app->waterTransform.position.y));
+	else
+		PushVec4(app->uniformBuffer, vec4(0.0, -1.0, 0.0, app->waterTransform.position.y));
+
+	app->clippingPlaneSize = app->uniformBuffer.head - app->clippingPlaneOffset;
 
 	glUnmapBuffer(GL_UNIFORM_BUFFER);
 	glBindBuffer(GL_UNIFORM_BUFFER, 0);
@@ -1459,7 +1479,7 @@ void RenderWaterShader(App* app)
 	Mesh& mesh = app->meshes[app->models[app->quadIndex].meshIdx];
 	GLuint vao = FindVAO(mesh, 0, programWater);
 
-	glm::mat4 model = TransformConstructor(Transform(vec3(0.0), vec3(0.0), vec3(4.0)));
+	glm::mat4 model = TransformConstructor(app->waterTransform);
 	model = app->camera.projection * app->camera.view * model;
 
 	glBindVertexArray(vao);

@@ -53,7 +53,7 @@ layout(binding = 1, std140) uniform LocalParams
 
 layout(binding = 2, std140) uniform ClippingPlane
 {
-	vec3 eyeWorldspace;
+	//vec3 eyeWorldspace;
 	vec4 clippingPlane;
 };
 
@@ -68,8 +68,7 @@ void main()
 	vPosition = vec3(uWorldMatrix * vec4(aPosition, 1.0));
 	vNormal   = vec3(uWorldMatrix * vec4(aNormal, 0.0));
 
-	vec4 clipDistanceDisplacement = vec4(0.0, 0.0, 0.0, length(eyeWorldspace) / 100);
-	gl_ClipDistance[0] = dot(vec4(eyeWorldspace, 1.0), clippingPlane + clipDistanceDisplacement);
+	gl_ClipDistance[0] = dot(vec4(vPosition, 1.0), clippingPlane);
 	gl_Position = uWorldViewProjectionMatrix * vec4(aPosition, 1.0);
 }
 
@@ -290,7 +289,7 @@ layout(binding = 1, std140) uniform LocalParams
 
 layout(binding = 2, std140) uniform ClippingPlane
 {
-	vec3 eyeWorldspace;
+	//vec3 eyeWorldspace;
 	vec4 clippingPlane;
 };
 
@@ -305,8 +304,7 @@ void main()
 	vPosition = vec3(uWorldMatrix * vec4(aPosition, 1.0));
 	vNormal   = vec3(uWorldMatrix * vec4(aNormal, 0.0));	
 
-	vec4 clipDistanceDisplacement = vec4(0.0, 0.0, 0.0, length(eyeWorldspace) / 100);
-	gl_ClipDistance[0] = dot(vec4(eyeWorldspace, 1.0), clippingPlane + clipDistanceDisplacement);
+	gl_ClipDistance[0] = dot(vec4(vPosition, 1.0), clippingPlane);
 	gl_Position = uWorldViewProjectionMatrix * vec4(aPosition, 1.0);
 }
 
