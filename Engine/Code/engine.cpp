@@ -221,6 +221,8 @@ void LoadTextures(App* app)
 	app->blackTexIdx = LoadTexture2D(app, "color_black.png");
 	app->normalTexIdx = LoadTexture2D(app, "color_normal.png");
 	app->magentaTexIdx = LoadTexture2D(app, "color_magenta.png");
+	app->normalTex = app->textures[LoadTexture2D(app, "Water/normalmap.png")].handle;
+	app->dudvTex = app->textures[LoadTexture2D(app, "Water/dudvmap.png")].handle;
 }
 
 void InicializeGLInfo(App* app)
@@ -1225,7 +1227,7 @@ void Render(App* app)
 		// Debug lights
 		RenderDebug(app);
 		// Cubemap
-		RenderSkybox(app);
+		RenderSkybox(app, app->camera);
 		// Water
 		RenderWaterShader(app);
 
@@ -1244,7 +1246,7 @@ void Render(App* app)
 
 		if (app->currentRenderTarget != "Final")
 		{
-			RenderSkybox(app);	
+			RenderSkybox(app, app->camera);	
 			RenderWaterShader(app);
 		}
 		glBindFramebuffer(GL_FRAMEBUFFER, 0);
@@ -1255,7 +1257,7 @@ void Render(App* app)
 		RenderDebug(app);		
 		if (app->currentRenderTarget == "Final")
 		{
-			RenderSkybox(app);
+			RenderSkybox(app, app->camera);
 			RenderWaterShader(app);			
 		}
 		glBindFramebuffer(GL_FRAMEBUFFER, 0);
@@ -1323,17 +1325,17 @@ void RenderQuad(App* app)
 	glBindVertexArray(app->vao);
 
 	// Bind textures
-	glUniform1i(app->uGAlbedo, 0);
-	glUniform1i(app->uGPosition, 1);
-	glUniform1i(app->uGNormal, 2);
+	glUniform1i(app->uGAlbedo, 6);
+	glUniform1i(app->uGPosition, 7);
+	glUniform1i(app->uGNormal, 8);
 
-	glActiveTexture(GL_TEXTURE0);
+	glActiveTexture(GL_TEXTURE6);
 	glBindTexture(GL_TEXTURE_2D, app->colorAttachmentTexture);
 
-	glActiveTexture(GL_TEXTURE1);
+	glActiveTexture(GL_TEXTURE7);
 	glBindTexture(GL_TEXTURE_2D, app->positionAttachmentTexture);
 
-	glActiveTexture(GL_TEXTURE2);
+	glActiveTexture(GL_TEXTURE8);
 	glBindTexture(GL_TEXTURE_2D, app->normalAttachmentTexture);
 
 	// Send Uniforms
@@ -1418,7 +1420,7 @@ void RenderDebug(App* app)
 }
 
 // CUBEMAP
-void RenderSkybox(App* app)
+void RenderSkybox(App* app, Camera cam)
 {
 	glDepthFunc(GL_LEQUAL);
 
@@ -1426,8 +1428,8 @@ void RenderSkybox(App* app)
 	glUseProgram(programCubemap.handle);
 	glBindVertexArray(app->skyboxVAO);
 
-	glm::mat4 view = glm::mat4(glm::mat3(app->camera.view));
-	glm::mat4 cubemapuWorldViewProjection = app->camera.projection * view;
+	glm::mat4 view = glm::mat4(glm::mat3(cam.view));
+	glm::mat4 cubemapuWorldViewProjection = cam.projection * view;
 	glUniformMatrix4fv(app->cubemapuWorldViewProjection, 1, GL_FALSE, &cubemapuWorldViewProjection[0][0]);
 	glActiveTexture(GL_TEXTURE0);
 	glBindTexture(GL_TEXTURE_CUBE_MAP, app->skyboxID);
@@ -1452,7 +1454,7 @@ void FillRTWater(App* app)
 	UniformBufferAlignment(app, reflectionCam, true);
 
 	PassWaterScene(app, app->fboReflection);
-	RenderSkybox(app);
+	RenderSkybox(app, reflectionCam);
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
 	//////////////////////////////////////////////////// REFRACTION /////////////////////////////////////
@@ -1495,6 +1497,30 @@ void RenderWaterShader(App* app)
 	glBindVertexArray(vao);
 	glUniformMatrix4fv(app->wateruProjectionMatrix, 1, GL_FALSE, &app->camera.projection[0][0]);
 	glUniformMatrix4fv(app->wateruWorldViewMatrix, 1, GL_FALSE, &model[0][0]);
+	glUniform2f(app->wateruViewportSize, app->displaySize.x, app->displaySize.y);
+	glUniformMatrix4fv(app->wateruViewMatrixInv, 1, GL_FALSE, &glm::inverse(app->camera.view)[0][0]);
+	glUniformMatrix4fv(app->wateruProjectionMatrixInv, 1, GL_FALSE, &glm::inverse(app->camera.projection)[0][0]);
+
+	// Bind textures
+	glUniform1i(app->wateruReflectionMap, 0);
+	glUniform1i(app->wateruReflectionDepth, 1);
+	glUniform1i(app->wateruRefractionMap, 2);
+	glUniform1i(app->wateruRefractionDepth, 3);
+	glUniform1i(app->wateruNormalMap, 4);
+	glUniform1i(app->wateruDudvMap, 5);
+
+	glActiveTexture(GL_TEXTURE0);
+	glBindTexture(GL_TEXTURE_2D, app->rtReflection);
+	glActiveTexture(GL_TEXTURE1);
+	glBindTexture(GL_TEXTURE_2D, app->rtReflectionDepth);
+	glActiveTexture(GL_TEXTURE2);
+	glBindTexture(GL_TEXTURE_2D, app->rtRefraction);
+	glActiveTexture(GL_TEXTURE3);
+	glBindTexture(GL_TEXTURE_2D, app->rtRefractionDepth);
+	glActiveTexture(GL_TEXTURE4);
+	glBindTexture(GL_TEXTURE_2D, app->normalTex);
+	glActiveTexture(GL_TEXTURE5);
+	glBindTexture(GL_TEXTURE_2D, app->dudvTex);
 
 	glDrawElements(GL_TRIANGLES, mesh.submeshes[0].indices.size(), GL_UNSIGNED_INT, 0);
 	glBindVertexArray(0);

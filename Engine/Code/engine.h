@@ -310,6 +310,10 @@ struct App
     GLint wateruNormalMap;
     GLint wateruDudvMap;
 
+    // Normal and dudv textures
+    GLuint normalTex;
+    GLuint dudvTex;
+
     // VAO object to link our screen filling quad with our textured quad shader
     GLuint vao;
     GLuint skyboxVAO = 0;
@@ -441,7 +445,7 @@ void RenderQuad(App* app);
 
 void RenderDebug(App* app);
 
-void RenderSkybox(App* app);
+void RenderSkybox(App* app, Camera cam);
 
 void FillRTWater(App* app);
 
