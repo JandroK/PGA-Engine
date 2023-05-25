@@ -1166,7 +1166,7 @@ void UniformBufferAlignment(App* app, Camera cam, bool reflection)
 	// Clipping Plane
 	AlignHead(app->uniformBuffer, app->uniformBufferAlignment);
 	app->clippingPlaneOffset = app->uniformBuffer.head;
-	//PushVec3(app->uniformBuffer, cam.view * vec4(0.0, 0.0, 0.0, 1.0));
+	PushMat4(app->uniformBuffer, cam.view);
 	if (reflection)
 		PushVec4(app->uniformBuffer, vec4(0.0, 1.0, 0.0, -app->waterTransform.position.y));
 	else
