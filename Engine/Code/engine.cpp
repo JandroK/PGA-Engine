@@ -1446,7 +1446,7 @@ void FillRTWater(App* app)
 	glBindFramebuffer(GL_FRAMEBUFFER, app->fboReflection);
 
 	Camera reflectionCam = app->camera;
-	reflectionCam.position.y *= -1;
+	reflectionCam.position.y = 2 * (app->camera.position.y - app->waterTransform.position.y);
 	reflectionCam.pitch *= -1;
 	ComputeCameraAxisDirection(reflectionCam);
 	reflectionCam.view = glm::lookAt(reflectionCam.position, reflectionCam.position + reflectionCam.front, reflectionCam.up);
@@ -1498,7 +1498,7 @@ void RenderWaterShader(App* app)
 	glUniformMatrix4fv(app->wateruProjectionMatrix, 1, GL_FALSE, &app->camera.projection[0][0]);
 	glUniformMatrix4fv(app->wateruWorldViewMatrix, 1, GL_FALSE, &model[0][0]);
 	glUniform2f(app->wateruViewportSize, app->displaySize.x, app->displaySize.y);
-	glUniformMatrix4fv(app->wateruViewMatrixInv, 1, GL_FALSE, &glm::inverse(app->camera.view)[0][0]);
+	glUniformMatrix4fv(app->wateruViewMatrixInv, 1, GL_FALSE, &glm::inverse(model)[0][0]);
 	glUniformMatrix4fv(app->wateruProjectionMatrixInv, 1, GL_FALSE, &glm::inverse(app->camera.projection)[0][0]);
 
 	// Bind textures

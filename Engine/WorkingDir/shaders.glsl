@@ -476,7 +476,7 @@ vec3 reconstructPixelPosition(float depth) {
 	return positionEyespace.xyz;
 }
 
-void main()
+void main(void)
 {
 	vec3 N = normalize(FSIn.normalViewspace);
 	vec3 V = normalize (-FSIn.positionViewspace);
