@@ -294,7 +294,8 @@ struct App
     GLint uDebugLightColor;
     GLint cubemapTexture;
     GLint cubemapuWorldViewProjection;
-    GLint wateruWorldViewProjection;
+    GLint wateruProjectionMatrix;
+    GLint wateruWorldViewMatrix;
 
     // VAO object to link our screen filling quad with our textured quad shader
     GLuint vao;

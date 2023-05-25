@@ -424,20 +424,27 @@ void main()
 #if defined(VERTEX) ///////////////////////////////////////////////////
 
 layout (location = 0) in vec3 aPosition;
+layout (location = 1) in vec3 aNormal;
 
-out vec2 TexCoords;
-uniform mat4 worldViewProjection;
+uniform mat4 projectionMatrix;
+uniform mat4 worldViewMatrix;
 
-void main()
+out Data
 {
-	TexCoords = vec2(aPosition.x / 2.0 + 0.5, aPosition.y / 2.0 + 0.5);
-	gl_Position = worldViewProjection * vec4(aPosition, 1.0);
+	vec3 positionViewspace;
+	vec3 normalViewspace;
+} VSOut;
+
+void main(void)
+{
+	VSOut.positionViewspace = vec3(worldViewMatrix * vec4(aPosition, 1.0));
+	VSOut.normalViewspace = vec3(worldViewMatrix * vec4(aNormal, 1.0));
+	gl_Position = projectionMatrix * vec4(VSOut.positionViewspace, 1.0);
 }
 
 #elif defined(FRAGMENT) ///////////////////////////////////////////////
 
 out vec4 oColor;
-in vec2 TexCoords;
 
 void main()
 {

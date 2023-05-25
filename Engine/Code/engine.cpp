@@ -639,7 +639,8 @@ void Init(App* app)
 
 	app->waterProgramIdx = LoadProgram(app, "shaders.glsl", "SHOW_WATER");
 	LoadShader(app, app->waterProgramIdx);
-	app->wateruWorldViewProjection = glGetUniformLocation(app->programs[app->waterProgramIdx].handle, "worldViewProjection");
+	app->wateruProjectionMatrix = glGetUniformLocation(app->programs[app->waterProgramIdx].handle, "projectionMatrix");
+	app->wateruWorldViewMatrix = glGetUniformLocation(app->programs[app->waterProgramIdx].handle, "worldViewMatrix");
 
 	app->mode = FORWARD;
 	app->currentMode = "Forward";
@@ -1480,10 +1481,11 @@ void RenderWaterShader(App* app)
 	GLuint vao = FindVAO(mesh, 0, programWater);
 
 	glm::mat4 model = TransformConstructor(app->waterTransform);
-	model = app->camera.projection * app->camera.view * model;
+	model = app->camera.view * model;
 
 	glBindVertexArray(vao);
-	glUniformMatrix4fv(app->wateruWorldViewProjection, 1, GL_FALSE, &model[0][0]);
+	glUniformMatrix4fv(app->wateruProjectionMatrix, 1, GL_FALSE, &app->camera.projection[0][0]);
+	glUniformMatrix4fv(app->wateruWorldViewMatrix, 1, GL_FALSE, &model[0][0]);
 
 	glDrawElements(GL_TRIANGLES, mesh.submeshes[0].indices.size(), GL_UNSIGNED_INT, 0);
 	glBindVertexArray(0);
