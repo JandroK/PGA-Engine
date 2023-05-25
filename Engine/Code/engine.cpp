@@ -641,6 +641,15 @@ void Init(App* app)
 	LoadShader(app, app->waterProgramIdx);
 	app->wateruProjectionMatrix = glGetUniformLocation(app->programs[app->waterProgramIdx].handle, "projectionMatrix");
 	app->wateruWorldViewMatrix = glGetUniformLocation(app->programs[app->waterProgramIdx].handle, "worldViewMatrix");
+	app->wateruViewportSize = glGetUniformLocation(app->programs[app->waterProgramIdx].handle, "viewportSize");
+	app->wateruViewMatrixInv = glGetUniformLocation(app->programs[app->waterProgramIdx].handle, "viewMatrixInv");
+	app->wateruProjectionMatrixInv = glGetUniformLocation(app->programs[app->waterProgramIdx].handle, "projectionMatrixInv");
+	app->wateruReflectionMap = glGetUniformLocation(app->programs[app->waterProgramIdx].handle, "reflectionMap");
+	app->wateruReflectionDepth = glGetUniformLocation(app->programs[app->waterProgramIdx].handle, "reflectionDepth");
+	app->wateruRefractionMap = glGetUniformLocation(app->programs[app->waterProgramIdx].handle, "refractionMap");
+	app->wateruRefractionDepth = glGetUniformLocation(app->programs[app->waterProgramIdx].handle, "refractionDepth");
+	app->wateruNormalMap = glGetUniformLocation(app->programs[app->waterProgramIdx].handle, "normalMap");
+	app->wateruDudvMap = glGetUniformLocation(app->programs[app->waterProgramIdx].handle, "dudvMap");
 
 	app->mode = FORWARD;
 	app->currentMode = "Forward";

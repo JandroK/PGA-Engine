@@ -294,8 +294,21 @@ struct App
     GLint uDebugLightColor;
     GLint cubemapTexture;
     GLint cubemapuWorldViewProjection;
+
+    // Water vertex uniforms
     GLint wateruProjectionMatrix;
     GLint wateruWorldViewMatrix;
+
+    // Water fragment uniforms
+    GLint wateruViewportSize;
+    GLint wateruViewMatrixInv;
+    GLint wateruProjectionMatrixInv;
+    GLint wateruReflectionMap;
+    GLint wateruReflectionDepth;
+    GLint wateruRefractionMap;
+    GLint wateruRefractionDepth;
+    GLint wateruNormalMap;
+    GLint wateruDudvMap;
 
     // VAO object to link our screen filling quad with our textured quad shader
     GLuint vao;

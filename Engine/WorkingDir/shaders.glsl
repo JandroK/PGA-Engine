@@ -444,7 +444,37 @@ void main(void)
 
 #elif defined(FRAGMENT) ///////////////////////////////////////////////
 
+uniform vec2 viewportSize;
+uniform mat4 viewMatrixInv;
+uniform mat4 projectionMatrixInv;
+
+uniform sampler2D reflectionMap;
+uniform sampler2D reflectionDepth;
+
+uniform sampler2D refractionMap;
+uniform sampler2D refractionDepth;
+
+uniform sampler2D normalMap;
+uniform sampler2D dudvMap;
+
+in Data {
+	vec3 positionViewspace;
+	vec3 normalViewspace;
+} FSIn;
+
 out vec4 oColor;
+
+vec3 fresnelSchlick(float cosThete, vec3 F0){
+	return F0 + (1.0 - F0) * pow(1.0 - cosThete, 5.0);
+}
+
+vec3 reconstructPixelPosition(float depth) {
+	vec2 texCoords = gl_FragCoord.xy / viewportSize;
+	vec3 positionNDC = vec3(texCoords * 2.0 - vec2(1.0), depth * 2.0 - 1.0);
+	vec4 positionEyespace = projectionMatrixInv * vec4(positionNDC, 1.0);
+	positionEyespace.xyz /= positionEyespace.w;
+	return positionEyespace.xyz;
+}
 
 void main()
 {
