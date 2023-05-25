@@ -228,6 +228,13 @@ enum PrimitiveType
     PLANE,
 };
 
+enum WaterPass
+{
+    NONE = 0,
+    REFLECTION,
+    REFRACTION
+};
+
 const VertexV3V2 vertices[] = {
     {glm::vec3(-1.0, -1.0, 0.0), glm::vec2(0.0, 0.0)},
     {glm::vec3(1.0, -1.0, 0.0), glm::vec2(1.0, 0.0)},
@@ -286,6 +293,8 @@ struct App
 
     // Location of the texture uniform in the textured quad shader
     GLuint programForwardUniformTexture;
+    GLint forwardEyeWorldspace;
+    GLint forwardClippingPlane;
     GLuint programDeferredUniformTexture;
     GLint uGAlbedo;
     GLint uGPosition;
@@ -418,7 +427,7 @@ void UniformBufferAlignment(App* app, Camera cam, bool reflection);
 
 void Render(App* app);
 
-void DrawScene(App* app, u32 programIdx, GLuint uTexture, GLuint fbo);
+void DrawScene(App* app, u32 programIdx, GLuint uTexture, GLuint fbo, Camera cam, WaterPass pass);
 
 void RenderQuad(App* app);
 
@@ -428,7 +437,7 @@ void RenderSkybox(App* app);
 
 void FillRTWater(App* app);
 
-void PassWaterScene(App* app, GLuint fbo);
+void PassWaterScene(App* app, Camera cam, GLuint fbo, WaterPass pass);
 
 void RenderWaterShader(App* app);
 

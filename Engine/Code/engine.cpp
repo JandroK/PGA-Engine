@@ -545,6 +545,7 @@ void Init(App* app)
 
 	// FRAMEBUFFERS
 	GenerateRenderTextures(app);
+	GenerateRenderTexturesWater(app);
 
 	// Init Camera
 	InitCamera(app);
@@ -628,6 +629,8 @@ void Init(App* app)
 	app->texturedForwardGeometryProgramIdx = LoadProgram(app, "shaders.glsl", "SHOW_FORWARD");
 	LoadShader(app, app->texturedForwardGeometryProgramIdx);
 	app->programForwardUniformTexture = glGetUniformLocation(app->programs[app->texturedForwardGeometryProgramIdx].handle, "uTexture");
+	app->forwardEyeWorldspace = glGetUniformLocation(app->programs[app->texturedForwardGeometryProgramIdx].handle, "eyeWorldspace");
+	app->forwardClippingPlane = glGetUniformLocation(app->programs[app->texturedForwardGeometryProgramIdx].handle, "clippingPlane");
 
 	app->cubemapProgramIdx = LoadProgram(app, "shaders.glsl", "SHOW_CUBE_MAP");
 	LoadShader(app, app->cubemapProgramIdx);
@@ -1130,16 +1133,6 @@ void UniformBufferAlignment(App* app, Camera cam, bool reflection)
 
 	app->globalParamsSize = app->uniformBuffer.head - app->globalParamsOffset;
 
-	// Clipping Plane
-	app->clippingPlaneOffset = app->uniformBuffer.head;
-	PushVec3(app->uniformBuffer, cam.view * vec4(0.0, 0.0, 0.0, 1.0));
-	if (reflection)
-		PushVec4(app->uniformBuffer, vec4(0.0, 1.0, 0.0, 0.0));
-	else
-		PushVec4(app->uniformBuffer, vec4(0.0, -1.0, 0.0, 0.0));
-
-	app->clippingPlaneSize = app->uniformBuffer.head - app->clippingPlaneOffset;
-
 	// Local Params
 	for (u32 i = 0; i < app->entities.size(); ++i)
 	{
@@ -1191,7 +1184,7 @@ void Render(App* app)
 		// Fill water render textures 
 		FillRTWater(app);
 		// Render World
-		DrawScene(app, app->texturedForwardGeometryProgramIdx, app->programForwardUniformTexture, app->gBuffer);
+		DrawScene(app, app->texturedForwardGeometryProgramIdx, app->programForwardUniformTexture, app->gBuffer, app->camera, WaterPass::NONE);
 		// Debug lights
 		RenderDebug(app);
 		// Cubemap
@@ -1210,7 +1203,7 @@ void Render(App* app)
 		FillRTWater(app);
 
 		// Render World
-		DrawScene(app, app->texturedDeferredGeometryProgramIdx, app->programDeferredUniformTexture, app->gBuffer);
+		DrawScene(app, app->texturedDeferredGeometryProgramIdx, app->programDeferredUniformTexture, app->gBuffer, app->camera, WaterPass::NONE);
 
 		if (app->currentRenderTarget != "Final")
 		{
@@ -1237,7 +1230,7 @@ void Render(App* app)
 	}
 }
 
-void DrawScene(App* app, u32 programIdx, GLuint uTexture, GLuint fbo)
+void DrawScene(App* app, u32 programIdx, GLuint uTexture, GLuint fbo, Camera cam, WaterPass pass)
 {
 	// Clean screen
 	glClearColor(0.1, 0.1, 0.1, 1.0);
@@ -1261,11 +1254,16 @@ void DrawScene(App* app, u32 programIdx, GLuint uTexture, GLuint fbo)
 		Model& model = app->models[entity.modelIndex];
 		Mesh& mesh = app->meshes[model.meshIdx];
 
+		//glUniform3f(app->forwardEyeWorldspace, cam.position.x, cam.position.y, cam.position.z);
+		if(pass == WaterPass::REFLECTION)
+			glUniform4f(app->forwardClippingPlane, 0.0, 1.0, 0.0, 0.0);
+		else if(pass == WaterPass::REFRACTION)
+			glUniform4f(app->forwardClippingPlane, 0.0, -1.0, 0.0, 0.0);
+
 		if(app->mode == FORWARD)
 			glBindBufferRange(GL_UNIFORM_BUFFER, BINDING(0), app->uniformBuffer.handle, app->globalParamsOffset, app->globalParamsSize);
 		glBindBufferRange(GL_UNIFORM_BUFFER, BINDING(1), app->uniformBuffer.handle, entity.localParamsOffset, entity.localParamsSize);
-		glBindBufferRange(GL_UNIFORM_BUFFER, BINDING(2), app->uniformBuffer.handle, app->clippingPlaneOffset, app->clippingPlaneSize);
-
+		
 		for (u32 i = 0; i < mesh.submeshes.size(); ++i)
 		{
 			GLuint vao = FindVAO(mesh, i, programTexturedGeometry);
@@ -1421,7 +1419,7 @@ void FillRTWater(App* app)
 
 	UniformBufferAlignment(app, reflectionCam, true);
 
-	PassWaterScene(app, app->fboReflection);
+	PassWaterScene(app, reflectionCam, app->fboReflection, WaterPass::REFLECTION);
 	RenderSkybox(app);
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
@@ -1431,20 +1429,20 @@ void FillRTWater(App* app)
 
 	Camera refractionCam = app->camera;
 	UniformBufferAlignment(app, refractionCam, false);
-	PassWaterScene(app, app->fboRefraction);
+	PassWaterScene(app, refractionCam, app->fboRefraction, WaterPass::REFRACTION);
 	
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 }
 
-void PassWaterScene(App* app, GLuint fbo)
+void PassWaterScene(App* app, Camera cam, GLuint fbo, WaterPass pass)
 {
 	glEnable(GL_DEPTH_TEST);
 	glEnable(GL_CLIP_DISTANCE0);
 
 	if (app->mode == FORWARD)
-		DrawScene(app, app->texturedForwardGeometryProgramIdx, app->programForwardUniformTexture, fbo);
+		DrawScene(app, app->texturedForwardGeometryProgramIdx, app->programForwardUniformTexture, fbo, cam, pass);
 	else
-		DrawScene(app, app->texturedDeferredGeometryProgramIdx, app->programDeferredUniformTexture, fbo);
+		DrawScene(app, app->texturedDeferredGeometryProgramIdx, app->programDeferredUniformTexture, fbo, cam, pass);
 
 	glDisable(GL_CLIP_DISTANCE0);
 }
