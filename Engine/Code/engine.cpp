@@ -221,7 +221,6 @@ void LoadTextures(App* app)
 	app->blackTexIdx = LoadTexture2D(app, "color_black.png");
 	app->normalTexIdx = LoadTexture2D(app, "color_normal.png");
 	app->magentaTexIdx = LoadTexture2D(app, "color_magenta.png");
-	app->normalTex = app->textures[LoadTexture2D(app, "Water/normalmap.png")].handle;
 	app->dudvTex = app->textures[LoadTexture2D(app, "Water/dudvmap.png")].handle;
 }
 
@@ -576,7 +575,7 @@ void Init(App* app)
 
 	app->entities.push_back(e);
 
-	app->waterTransform.scale = vec3(4.0f);
+	app->waterTransform.scale = vec3(40.0f);
 
 	// Create light
 	Light lDir = InstanceLight(DIRECTIONAL_LIGHT, "Directional Light 0");
@@ -643,15 +642,10 @@ void Init(App* app)
 	LoadShader(app, app->waterProgramIdx);
 	app->wateruProjectionMatrix = glGetUniformLocation(app->programs[app->waterProgramIdx].handle, "projectionMatrix");
 	app->wateruWorldViewMatrix = glGetUniformLocation(app->programs[app->waterProgramIdx].handle, "worldViewMatrix");
-	app->wateruViewportSize = glGetUniformLocation(app->programs[app->waterProgramIdx].handle, "viewportSize");
-	app->wateruViewMatrixInv = glGetUniformLocation(app->programs[app->waterProgramIdx].handle, "viewMatrixInv");
-	app->wateruProjectionMatrixInv = glGetUniformLocation(app->programs[app->waterProgramIdx].handle, "projectionMatrixInv");
 	app->wateruReflectionMap = glGetUniformLocation(app->programs[app->waterProgramIdx].handle, "reflectionMap");
-	app->wateruReflectionDepth = glGetUniformLocation(app->programs[app->waterProgramIdx].handle, "reflectionDepth");
 	app->wateruRefractionMap = glGetUniformLocation(app->programs[app->waterProgramIdx].handle, "refractionMap");
-	app->wateruRefractionDepth = glGetUniformLocation(app->programs[app->waterProgramIdx].handle, "refractionDepth");
-	app->wateruNormalMap = glGetUniformLocation(app->programs[app->waterProgramIdx].handle, "normalMap");
 	app->wateruDudvMap = glGetUniformLocation(app->programs[app->waterProgramIdx].handle, "dudvMap");
+	app->wateruMoveFactor = glGetUniformLocation(app->programs[app->waterProgramIdx].handle, "moveFactor");
 
 	app->mode = FORWARD;
 	app->currentMode = "Forward";
@@ -1019,6 +1013,9 @@ std::string GetNewLightName(App* app, std::string& name)
 void Update(App* app)
 {
 	app->timeGame += app->deltaTime;
+	app->moveFactor += app->waveSpeed * app->deltaTime;
+	app->moveFactor = fmod(app->moveFactor, 1);
+
 	// You can handle app->input keyboard/mouse here
 	if (app->input.keys[K_CTRL] == ButtonState::BUTTON_PRESSED)
 		OrbitCamera(app);
@@ -1325,17 +1322,17 @@ void RenderQuad(App* app)
 	glBindVertexArray(app->vao);
 
 	// Bind textures
-	glUniform1i(app->uGAlbedo, 6);
-	glUniform1i(app->uGPosition, 7);
-	glUniform1i(app->uGNormal, 8);
+	glUniform1i(app->uGAlbedo, 3);
+	glUniform1i(app->uGPosition, 4);
+	glUniform1i(app->uGNormal, 5);
 
-	glActiveTexture(GL_TEXTURE6);
+	glActiveTexture(GL_TEXTURE3);
 	glBindTexture(GL_TEXTURE_2D, app->colorAttachmentTexture);
 
-	glActiveTexture(GL_TEXTURE7);
+	glActiveTexture(GL_TEXTURE4);
 	glBindTexture(GL_TEXTURE_2D, app->positionAttachmentTexture);
 
-	glActiveTexture(GL_TEXTURE8);
+	glActiveTexture(GL_TEXTURE5);
 	glBindTexture(GL_TEXTURE_2D, app->normalAttachmentTexture);
 
 	// Send Uniforms
@@ -1497,29 +1494,18 @@ void RenderWaterShader(App* app)
 	glBindVertexArray(vao);
 	glUniformMatrix4fv(app->wateruProjectionMatrix, 1, GL_FALSE, &app->camera.projection[0][0]);
 	glUniformMatrix4fv(app->wateruWorldViewMatrix, 1, GL_FALSE, &model[0][0]);
-	glUniform2f(app->wateruViewportSize, app->displaySize.x, app->displaySize.y);
-	glUniformMatrix4fv(app->wateruViewMatrixInv, 1, GL_FALSE, &glm::inverse(model)[0][0]);
-	glUniformMatrix4fv(app->wateruProjectionMatrixInv, 1, GL_FALSE, &glm::inverse(app->camera.projection)[0][0]);
+	glUniform1f(app->wateruMoveFactor, 0.0f); // TODO: Change by app->moveFactor
 
 	// Bind textures
 	glUniform1i(app->wateruReflectionMap, 0);
-	glUniform1i(app->wateruReflectionDepth, 1);
-	glUniform1i(app->wateruRefractionMap, 2);
-	glUniform1i(app->wateruRefractionDepth, 3);
-	glUniform1i(app->wateruNormalMap, 4);
-	glUniform1i(app->wateruDudvMap, 5);
+	glUniform1i(app->wateruRefractionMap, 1);
+	glUniform1i(app->wateruDudvMap, 2);
 
 	glActiveTexture(GL_TEXTURE0);
 	glBindTexture(GL_TEXTURE_2D, app->rtReflection);
 	glActiveTexture(GL_TEXTURE1);
-	glBindTexture(GL_TEXTURE_2D, app->rtReflectionDepth);
-	glActiveTexture(GL_TEXTURE2);
 	glBindTexture(GL_TEXTURE_2D, app->rtRefraction);
-	glActiveTexture(GL_TEXTURE3);
-	glBindTexture(GL_TEXTURE_2D, app->rtRefractionDepth);
-	glActiveTexture(GL_TEXTURE4);
-	glBindTexture(GL_TEXTURE_2D, app->normalTex);
-	glActiveTexture(GL_TEXTURE5);
+	glActiveTexture(GL_TEXTURE2);
 	glBindTexture(GL_TEXTURE_2D, app->dudvTex);
 
 	glDrawElements(GL_TRIANGLES, mesh.submeshes[0].indices.size(), GL_UNSIGNED_INT, 0);

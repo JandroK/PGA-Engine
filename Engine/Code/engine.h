@@ -300,18 +300,12 @@ struct App
     GLint wateruWorldViewMatrix;
 
     // Water fragment uniforms
-    GLint wateruViewportSize;
-    GLint wateruViewMatrixInv;
-    GLint wateruProjectionMatrixInv;
     GLint wateruReflectionMap;
-    GLint wateruReflectionDepth;
     GLint wateruRefractionMap;
-    GLint wateruRefractionDepth;
-    GLint wateruNormalMap;
     GLint wateruDudvMap;
+    GLint wateruMoveFactor;
 
-    // Normal and dudv textures
-    GLuint normalTex;
+    // Dudv texture
     GLuint dudvTex;
 
     // VAO object to link our screen filling quad with our textured quad shader
@@ -381,6 +375,8 @@ struct App
 
     // Water
     Transform waterTransform;
+    float moveFactor = 0.0f;
+    float waveSpeed = 0.03f;
 };
 
 void Init(App* app);

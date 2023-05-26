@@ -429,85 +429,51 @@ layout (location = 1) in vec3 aNormal;
 uniform mat4 projectionMatrix;
 uniform mat4 worldViewMatrix;
 
-out Data
-{
-	vec3 positionViewspace;
-	vec3 normalViewspace;
-} VSOut;
+out vec4 clipSpace;
+out vec2 textureCoords;
+
+const float tiling = 2;
 
 void main(void)
 {
-	VSOut.positionViewspace = vec3(worldViewMatrix * vec4(aPosition, 1.0));
-	VSOut.normalViewspace = vec3(worldViewMatrix * vec4(aNormal, 1.0));
-	gl_Position = projectionMatrix * vec4(VSOut.positionViewspace, 1.0);
+	clipSpace = projectionMatrix * worldViewMatrix * vec4(aPosition, 1.0);
+	gl_Position = clipSpace;
+	textureCoords = mod(vec2(aPosition.x / 2.0 + 0.5, aPosition.z / 2.0 + 0.5), 0.2) * 1.0/0.2;
 }
 
 #elif defined(FRAGMENT) ///////////////////////////////////////////////
 
-uniform vec2 viewportSize;
-uniform mat4 viewMatrixInv;
-uniform mat4 projectionMatrixInv;
-
+uniform float moveFactor;
 uniform sampler2D reflectionMap;
-uniform sampler2D reflectionDepth;
-
 uniform sampler2D refractionMap;
-uniform sampler2D refractionDepth;
-
-uniform sampler2D normalMap;
 uniform sampler2D dudvMap;
 
-in Data {
-	vec3 positionViewspace;
-	vec3 normalViewspace;
-} FSIn;
+in vec4 clipSpace;
+in vec2 textureCoords;
+
+const float waveStrength = 0.02;
 
 out vec4 oColor;
 
-vec3 fresnelSchlick(float cosThete, vec3 F0){
-	return F0 + (1.0 - F0) * pow(1.0 - cosThete, 5.0);
-}
-
-vec3 reconstructPixelPosition(float depth) {
-	vec2 texCoords = gl_FragCoord.xy / viewportSize;
-	vec3 positionNDC = vec3(texCoords * 2.0 - vec2(1.0), depth * 2.0 - 1.0);
-	vec4 positionEyespace = projectionMatrixInv * vec4(positionNDC, 1.0);
-	positionEyespace.xyz /= positionEyespace.w;
-	return positionEyespace.xyz;
-}
-
 void main(void)
 {
-	vec3 N = normalize(FSIn.normalViewspace);
-	vec3 V = normalize (-FSIn.positionViewspace);
-	vec3 Pw = vec3(viewMatrixInv * vec4(FSIn.positionViewspace, 1.0)); // position in world space
-	vec2 texCoord = gl_FragCoord.xy / viewportSize;
+	vec2 NDC = (clipSpace.xy / clipSpace.w) / 2.0 + 0.5;
+	vec2 refractTexCoords = vec2(NDC.x, NDC.y);
+	vec2 reflectTexCoords = vec2(NDC.x, -NDC.y);
 
-	const vec2 waveLength = vec2(2.0);
-	const vec2 waveStrength = vec2(0.05);
-	const float turbidityDistance = 10.0;
+	vec2 distortion1 = (texture(dudvMap, vec2(textureCoords.x + moveFactor, textureCoords.y)).rg * 2.0 - 1.0) * waveStrength;
 
-	//vec2 distortion = (2.0 * texture(dudvMap, Pw.xz / waveLength).rg - vec2(1.0)) * waveStrength + waveStrength / 7;
+	refractTexCoords += distortion1;
+	refractTexCoords = clamp(refractTexCoords, 0.001, 0.999);
 
-	// Distorted reflection and refraction
-	vec2 reflectionTexCoord = vec2(texCoord.s, 1.0 - texCoord.t);// + distortion;
-	vec2 refractionTexCoord = texCoord;// + distortion;
-	vec3 reflectionColor = texture(reflectionMap, reflectionTexCoord).rgb;
-	vec3 refractionColor = texture(refractionMap, refractionTexCoord).rgb;
+	reflectTexCoords += distortion1;
+	reflectTexCoords.x = clamp(reflectTexCoords.x, 0.001, 0.999);
+	reflectTexCoords.y = clamp(reflectTexCoords.y, -0.999, -0.001);
 
-	// Water tint
-	float distortedGroundDepth = texture(refractionDepth, refractionTexCoord).x;
-	vec3 distortedGroundPosViewspace = reconstructPixelPosition(distortedGroundDepth);
-	float distortedWaterDepth = FSIn.positionViewspace.z - distortedGroundPosViewspace.z;
-	float tintFactor = clamp(distortedWaterDepth / turbidityDistance, 0.0, 1.0);
-	vec3 waterColor = vec3(0.25, 0.4, 0.6);
-	refractionColor = mix(refractionColor, waterColor, tintFactor);
+	vec4 reflectColour = texture(reflectionMap, reflectTexCoords);
+	vec4 refractColour = texture(refractionMap, refractTexCoords);
 
-	// Fresnel
-	vec3 F0 = vec3(0.1);
-	vec3 F = fresnelSchlick(max (0.0, dot(V, N)), F0);
-	oColor.rgb = mix(refractionColor, reflectionColor, F);
-	oColor.a = 1.0;
+	oColor = mix(reflectColour, refractColour, 0.5);
 }
 
 #endif
