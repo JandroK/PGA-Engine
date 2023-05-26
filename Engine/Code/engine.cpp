@@ -568,14 +568,14 @@ void Init(App* app)
 	app->quadIndex = app->primitiveIndex[5];
 
 	Entity e;
-	e.transform = Transform(vec3(0.0f), vec3(0.0f, -90.0f, 0.0f), vec3(0.5f));
+	e.transform = Transform(vec3(0.0, 1.0, 0.0));
 	e.worldMatrix = TransformConstructor(e.transform);
-	e.modelIndex = LoadModel(app, "House/casita2.obj");
-	e.name = "House";
+	e.modelIndex = LoadModel(app, "Lake/CastleLake.obj");
+	e.name = "Lake";
 
 	app->entities.push_back(e);
 
-	app->waterTransform.scale = vec3(40.0f);
+	app->waterTransform.scale = vec3(100.0f);
 
 	// Create light
 	Light lDir = InstanceLight(DIRECTIONAL_LIGHT, "Directional Light 0");

@@ -1,0 +1,32 @@
+# Blender 3.5.1 MTL File: 'None'
+# www.blender.org
+
+newmtl Environment
+Ns 20.000006
+Ka 1.000000 1.000000 1.000000
+Ks 0.000000 0.000000 0.000000
+Ke 0.000000 0.000000 0.000000
+Ni 1.450000
+illum 1
+map_Kd textures/texture_environment.jpg
+map_d C:/texture_environment_opacity.jpg
+
+newmtl Fortress
+Ns 20.000006
+Ka 1.000000 1.000000 1.000000
+Ks 0.000000 0.000000 0.000000
+Ke 0.000000 0.000000 0.000000
+Ni 1.450000
+illum 1
+map_Kd textures/texture_building.jpeg
+map_d C:/texture_building_opacity.jpg
+
+newmtl Sand
+Ns 20.000006
+Ka 1.000000 1.000000 1.000000
+Ks 0.000000 0.000000 0.000000
+Ke 0.000000 0.000000 0.000000
+Ni 1.450000
+d 1.000000
+illum 1
+map_Kd textures/texture_sand.jpeg
