@@ -581,36 +581,37 @@ void Init(App* app)
 	Light lDir = InstanceLight(DIRECTIONAL_LIGHT, "Directional Light 0");
 	lDir.color = glm::normalize(vec3(98.0f, 128.0f, 160.0f));
 	lDir.position = vec3(17.8f, 27.5f, 0.0f);
+	lDir.direction = vec3(0.1f, 0.0f, 0.2f);
 	app->lights.push_back(lDir);
 
 	lDir.name = "Directional Light 1";
-	lDir.position = vec3(0.0f, 32.0f, 0.0f);
-	lDir.direction = vec3(0.0f, -1.0f, 0.0f);
+	lDir.position = vec3(-3.9f, 40.0f, 3.7f);
+	lDir.direction = vec3(-0.1f, -0.3f, -0.5f);
 	app->lights.push_back(lDir);
 
 	Light l = InstanceLight(POINT_LIGHT, "Point Light 0");
 	l.color = glm::normalize(vec3(254.0f, 101.0f, 53.0f));
-	l.position = vec3(6.6f, 18.9f, 11.2f);
+	l.position = vec3(-4.4f, 2.1f, 34.6f);
 	app->lights.push_back(l);
 
 	l.name = "Point Light 1";
-	l.position = vec3(-8.6f, 19.7f, 11.2f);
+	l.position = vec3(-2.7f, 9.7f, 14.6f);
 	app->lights.push_back(l);
 
 	l.name = "Point Light 2";
-	l.position = vec3(5.0f, 9.9f, 9.8f);
+	l.position = vec3(10.5f, 23.1f, 8.5f);
 	app->lights.push_back(l);
 
 	l.name = "Point Light 3";
-	l.position = vec3(-7.1f, 9.9f, 9.8f);
+	l.position = vec3(-2.6f, 36.4f, 4.4f);
 	app->lights.push_back(l);
 
 	l.name = "Point Light 4";
-	l.position = vec3(6.3f, 19.3f, -12.1f);
+	l.position = vec3(5.4f, 17.6f, -3.6f);
 	app->lights.push_back(l);
 
 	l.name = "Point Light 5";
-	l.position = vec3(-8.2f, 18.2f, -12.1f);
+	l.position = vec3(-5.5f, 20.8f, -10.3f);
 	app->lights.push_back(l);
 
 	// Load programs
@@ -685,10 +686,10 @@ void InitCamera(App* app)
 	app->camera.zFar = 500.0f;
 	app->camera.FOV = 60.0f;
 
-	app->camera.position = vec3(50.0f, 40.0f, 60.0f);
+	app->camera.position = vec3(24.4f, 0.8f, 45.4f);
 	app->camera.target = vec3(0.0f, 13.0f, 0.0f);
 	app->camera.upWorld = vec3(0.0f, 1.0f, 0.0f);
-	app->camera.front = glm::normalize(vec3(-50.0f, -28.0f, -60.0f));
+	app->camera.front = glm::normalize(vec3(-40.0f, 10.0f, -45.4f));
 	app->camera.right = glm::normalize(glm::cross(app->camera.front, app->camera.upWorld));
 	app->camera.up = glm::normalize(glm::cross(app->camera.right, app->camera.front));
 	app->camera.projection = glm::perspective(glm::radians(app->camera.FOV), app->camera.aspectRatio, app->camera.zNear, app->camera.zFar);
@@ -1024,6 +1025,7 @@ void Update(App* app)
 
 	ZoomCamera(app);
 	MoveCamera(app);
+	ELOG("Camera pos: %f, %f, %f", app->camera.position.x, app->camera.position.y, app->camera.position.z);
 }
 
 void MoveCamera(App* app)
@@ -1378,7 +1380,6 @@ void RenderDebug(App* app)
 		if (it.type == DIRECTIONAL_LIGHT)
 		{
 			modelIndex = app->quadIndex;
-			scaleFactor = 0.1f;
 		}
 		else
 		{
@@ -1652,7 +1653,7 @@ Light InstanceLight(LightType type, std::string name)
 		return Light(vec3(0.0f),			 vec3(-1.0f), vec3(1.0f), DIRECTIONAL_LIGHT, 10.0f, 1.0f, name);
 		break;
 	case POINT_LIGHT:
-		return Light(vec3(0.0f, 5.0f, 0.0f), vec3(1.0f),  vec3(1.0f), POINT_LIGHT,       14.0f, 1.0f, name);
+		return Light(vec3(0.0f, 5.0f, 0.0f), vec3(1.0f),  vec3(1.0f), POINT_LIGHT,       20.0f, 1.0f, name);
 		break;
 	default:
 		break;
