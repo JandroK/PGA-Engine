@@ -1025,7 +1025,6 @@ void Update(App* app)
 
 	ZoomCamera(app);
 	MoveCamera(app);
-	ELOG("Camera pos: %f, %f, %f", app->camera.position.x, app->camera.position.y, app->camera.position.z);
 }
 
 void MoveCamera(App* app)
