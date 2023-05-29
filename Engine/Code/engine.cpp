@@ -1250,7 +1250,7 @@ void Render(App* app)
 		glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
 		///////////////////////////////////////////////// Lighting pass ////////////////////////////////////////
-		RenderDeferredLights(app);
+		RenderDeferredLights(app, app->lightBuffer);
 		// Debug lights
 		RenderDebug(app);		
 		if (app->currentRenderTarget == "Final")
@@ -1344,10 +1344,10 @@ void RenderQuad(App* app)
 	glBindVertexArray(0);
 }
 
-void RenderDeferredLights(App* app)
+void RenderDeferredLights(App* app, GLuint fbo)
 {
 	// Render on this framebuffer render target
-	glBindFramebuffer(GL_FRAMEBUFFER, app->lightBuffer);
+	glBindFramebuffer(GL_FRAMEBUFFER, fbo);
 
 	glClearColor(0.1, 0.1, 0.1, 1.0);
 	glClear(GL_COLOR_BUFFER_BIT);
@@ -1359,7 +1359,7 @@ void RenderDeferredLights(App* app)
 	RenderQuad(app);
 
 	glBindFramebuffer(GL_READ_FRAMEBUFFER, app->gBuffer);
-	glBindFramebuffer(GL_DRAW_FRAMEBUFFER, app->lightBuffer);
+	glBindFramebuffer(GL_DRAW_FRAMEBUFFER, fbo);
 
 	glBlitFramebuffer(0, 0, app->displaySize.x, app->displaySize.x, 0, 0, app->displaySize.x, app->displaySize.x, GL_DEPTH_BUFFER_BIT, GL_NEAREST);
 	glUseProgram(0);
@@ -1473,7 +1473,15 @@ void PassWaterScene(App* app, GLuint fbo)
 	if (app->mode == FORWARD)
 		DrawScene(app, app->texturedForwardGeometryProgramIdx, app->programForwardUniformTexture, fbo);
 	else
-		DrawScene(app, app->texturedDeferredGeometryProgramIdx, app->programDeferredUniformTexture, fbo);
+	{
+		if(app->currentRenderTarget != "Final")
+			DrawScene(app, app->texturedDeferredGeometryProgramIdx, app->programDeferredUniformTexture, fbo);
+		else
+		{
+			DrawScene(app, app->texturedDeferredGeometryProgramIdx, app->programDeferredUniformTexture, app->gBuffer);
+			RenderDeferredLights(app, fbo);
+		}
+	}
 
 	glDisable(GL_CLIP_DISTANCE0);
 }

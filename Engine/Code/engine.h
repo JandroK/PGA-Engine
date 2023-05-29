@@ -449,7 +449,7 @@ void PassWaterScene(App* app, GLuint fbo);
 
 void RenderWaterShader(App* app);
 
-void RenderDeferredLights(App* app);
+void RenderDeferredLights(App* app, GLuint fbo);
 
 u32 LoadTexture2D(App* app, const char* filepath);
 
