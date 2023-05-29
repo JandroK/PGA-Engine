@@ -88,7 +88,7 @@ layout(location = 3) out vec4 oDepth;
 
 // Same values of camara parameters
 float near = 0.1; 
-float far  = 500.0; 
+float far  = 300.0; 
   
 float LinearizeDepth(float depth) 
 {
@@ -428,14 +428,21 @@ layout (location = 1) in vec3 aNormal;
 
 uniform mat4 projectionMatrix;
 uniform mat4 worldViewMatrix;
+uniform mat4 uWorldMatrix;
 
 out vec4 clipSpace;
 out vec2 textureCoords;
+
+out vec3 vPosition;	// In worldspace
+out vec3 vNormal;	// In worldspace
 
 const float tiling = 2;
 
 void main(void)
 {
+	vPosition = vec3(uWorldMatrix * vec4(aPosition, 1.0));
+	vNormal   = vec3(uWorldMatrix * vec4(aNormal, 0.0));
+
 	clipSpace = projectionMatrix * worldViewMatrix * vec4(aPosition, 1.0);
 	gl_Position = clipSpace;
 	textureCoords = mod(vec2(aPosition.x / 2.0 + 0.5, aPosition.z / 2.0 + 0.5), 0.2) * 1.0/0.2;
@@ -443,6 +450,7 @@ void main(void)
 
 #elif defined(FRAGMENT) ///////////////////////////////////////////////
 
+uniform int RTT;
 uniform float moveFactor;
 uniform sampler2D reflectionMap;
 uniform sampler2D refractionMap;
@@ -450,30 +458,69 @@ uniform sampler2D dudvMap;
 
 in vec4 clipSpace;
 in vec2 textureCoords;
+in vec3 vPosition;
+in vec3 vNormal;
 
 const float waveStrength = 0.02;
 
 out vec4 oColor;
 
+// Same values of camara parameters
+float near = 0.1; 
+float far  = 300.0; 
+  
+float LinearizeDepth(float depth) 
+{
+    float z = depth * 2.0 - 1.0; // back to NDC 
+    return (2.0 * near * far) / (far + near - z * (far - near));	
+}
+
 void main(void)
 {
-	vec2 NDC = (clipSpace.xy / clipSpace.w) / 2.0 + 0.5;
-	vec2 refractTexCoords = vec2(NDC.x, NDC.y);
-	vec2 reflectTexCoords = vec2(NDC.x, -NDC.y);
+	switch(RTT)
+	{
+		// Albedo
+		case 0:
+		oColor = vec4(0.25, 0.4, 0.6, 1.0);
+		break;
+		// Normal
+		case 1:
+		oColor = vec4(normalize(vNormal), 1.0);
+		break;
+		// Position
+		case 2:
+		oColor = vec4(vPosition, 1.0);
+		break;
+		// Depth
+		case 3:
+		{
+			float depth = LinearizeDepth(gl_FragCoord.z) / far;
+    		oColor = vec4(vec3(depth), 1.0);
+		}		
+		break;
+		// Final
+		default:
+		{
+			vec2 NDC = (clipSpace.xy / clipSpace.w) / 2.0 + 0.5;
+			vec2 refractTexCoords = vec2(NDC.x, NDC.y);
+			vec2 reflectTexCoords = vec2(NDC.x, -NDC.y);
 
-	vec2 distortion1 = (texture(dudvMap, vec2(textureCoords.x + moveFactor, textureCoords.y)).rg * 2.0 - 1.0) * waveStrength;
+			vec2 distortion1 = (texture(dudvMap, vec2(textureCoords.x + moveFactor, textureCoords.y)).rg * 2.0 - 1.0) * waveStrength;
 
-	refractTexCoords += distortion1;
-	refractTexCoords = clamp(refractTexCoords, 0.001, 0.999);
+			refractTexCoords += distortion1;
+			refractTexCoords = clamp(refractTexCoords, 0.001, 0.999);
 
-	reflectTexCoords += distortion1;
-	reflectTexCoords.x = clamp(reflectTexCoords.x, 0.001, 0.999);
-	reflectTexCoords.y = clamp(reflectTexCoords.y, -0.999, -0.001);
+			reflectTexCoords += distortion1;
+			reflectTexCoords.x = clamp(reflectTexCoords.x, 0.001, 0.999);
+			reflectTexCoords.y = clamp(reflectTexCoords.y, -0.999, -0.001);
 
-	vec4 reflectColour = texture(reflectionMap, reflectTexCoords);
-	vec4 refractColour = texture(refractionMap, refractTexCoords);
+			vec4 reflectColour = texture(reflectionMap, reflectTexCoords);
+			vec4 refractColour = texture(refractionMap, refractTexCoords);
 
-	oColor = mix(reflectColour, refractColour, 0.5);
+			oColor = mix(reflectColour, refractColour, 0.5);
+		}
+		break;
+	}	
 }
 
 #endif

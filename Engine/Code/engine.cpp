@@ -643,6 +643,8 @@ void Init(App* app)
 	LoadShader(app, app->waterProgramIdx);
 	app->wateruProjectionMatrix = glGetUniformLocation(app->programs[app->waterProgramIdx].handle, "projectionMatrix");
 	app->wateruWorldViewMatrix = glGetUniformLocation(app->programs[app->waterProgramIdx].handle, "worldViewMatrix");
+	app->wateruWorldMatrix = glGetUniformLocation(app->programs[app->waterProgramIdx].handle, "uWorldMatrix");
+	app->wateruRTT = glGetUniformLocation(app->programs[app->waterProgramIdx].handle, "RTT");
 	app->wateruReflectionMap = glGetUniformLocation(app->programs[app->waterProgramIdx].handle, "reflectionMap");
 	app->wateruRefractionMap = glGetUniformLocation(app->programs[app->waterProgramIdx].handle, "refractionMap");
 	app->wateruDudvMap = glGetUniformLocation(app->programs[app->waterProgramIdx].handle, "dudvMap");
@@ -683,7 +685,7 @@ void InitCamera(App* app)
 {
 	app->camera.aspectRatio = (float)app->displaySize.x / (float)app->displaySize.y;
 	app->camera.zNear = 0.1f;
-	app->camera.zFar = 500.0f;
+	app->camera.zFar = 300.0f;
 	app->camera.FOV = 60.0f;
 
 	app->camera.position = vec3(24.4f, 0.8f, 45.4f);
@@ -1497,12 +1499,18 @@ void RenderWaterShader(App* app)
 	GLuint vao = FindVAO(mesh, 0, programWater);
 
 	glm::mat4 model = TransformConstructor(app->waterTransform);
-	model = app->camera.view * model;
+	glm::mat4 view = app->camera.view * model;
 
 	glBindVertexArray(vao);
 	glUniformMatrix4fv(app->wateruProjectionMatrix, 1, GL_FALSE, &app->camera.projection[0][0]);
-	glUniformMatrix4fv(app->wateruWorldViewMatrix, 1, GL_FALSE, &model[0][0]);
+	glUniformMatrix4fv(app->wateruWorldViewMatrix, 1, GL_FALSE, &view[0][0]);
+	glUniformMatrix4fv(app->wateruWorldMatrix, 1, GL_FALSE, &model[0][0]);
 	glUniform1f(app->wateruMoveFactor, 0.0f); // TODO: Change by app->moveFactor
+	
+	if(app->mode == Mode::DEFERRED)
+		glUniform1i(app->wateruRTT, ConvertStringToTextureType(app->currentRenderTarget));
+	else
+		glUniform1i(app->wateruRTT, 4);
 
 	// Bind textures
 	glUniform1i(app->wateruReflectionMap, 0);
@@ -1651,7 +1659,6 @@ Entity GeneratePrimitive(u32 primitiveIndex, std::string name)
 }
 
 // Light
-
 Light InstanceLight(LightType type, std::string name)
 {
 	switch (type)
@@ -1665,4 +1672,17 @@ Light InstanceLight(LightType type, std::string name)
 	default:
 		break;
 	}
+}
+
+int ConvertStringToTextureType(std::string type)
+{
+	if (type.compare("Color") == 0)
+		return TextureType::ALBEDO;
+	else if (type.compare("Normal") == 0)
+		return TextureType::NORMAL;
+	else if (type.compare("Position") == 0)
+		return TextureType::POSITION;
+	else if (type.compare("Depth") == 0)
+		return TextureType::DEPTH;
+	else return TextureType::FINAL;
 }

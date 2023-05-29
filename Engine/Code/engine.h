@@ -228,6 +228,15 @@ enum PrimitiveType
     PLANE,
 };
 
+enum TextureType
+{
+    ALBEDO = 0,
+    NORMAL,
+    POSITION,
+    DEPTH,
+    FINAL
+};
+
 const VertexV3V2 vertices[] = {
     {glm::vec3(-1.0, -1.0, 0.0), glm::vec2(0.0, 0.0)},
     {glm::vec3(1.0, -1.0, 0.0), glm::vec2(1.0, 0.0)},
@@ -298,12 +307,14 @@ struct App
     // Water vertex uniforms
     GLint wateruProjectionMatrix;
     GLint wateruWorldViewMatrix;
+    GLint wateruWorldMatrix;
 
     // Water fragment uniforms
     GLint wateruReflectionMap;
     GLint wateruRefractionMap;
     GLint wateruDudvMap;
     GLint wateruMoveFactor;
+    GLint wateruRTT;
 
     // Dudv texture
     GLuint dudvTex;
@@ -343,7 +354,7 @@ struct App
     std::string currentMode;
 
     // Render Target Texture
-    std::unordered_map< std::string, GLuint> renderTargets;
+    std::unordered_map<std::string, GLuint> renderTargets;
     std::string currentRenderTarget = "Final";
 
     // GlobalParams
@@ -470,3 +481,5 @@ u8 GetComponentCount(const GLenum& type);
 Entity GeneratePrimitive(u32 primitiveIndex, std::string name);
 
 Light InstanceLight(LightType type, std::string name);
+
+int ConvertStringToTextureType(std::string type);
