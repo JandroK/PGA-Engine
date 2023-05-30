@@ -689,7 +689,7 @@ void InitCamera(App* app)
 	app->camera.FOV = 60.0f;
 
 	app->camera.position = vec3(24.4f, 0.8f, 45.4f);
-	app->camera.target = vec3(0.0f, 13.0f, 0.0f);
+	app->camera.target = vec3(-15.6f, 10.8f, 0.0f);
 	app->camera.upWorld = vec3(0.0f, 1.0f, 0.0f);
 	app->camera.front = glm::normalize(vec3(-40.0f, 10.0f, -45.4f));
 	app->camera.right = glm::normalize(glm::cross(app->camera.front, app->camera.upWorld));
@@ -1505,7 +1505,7 @@ void RenderWaterShader(App* app)
 	glUniformMatrix4fv(app->wateruProjectionMatrix, 1, GL_FALSE, &app->camera.projection[0][0]);
 	glUniformMatrix4fv(app->wateruWorldViewMatrix, 1, GL_FALSE, &view[0][0]);
 	glUniformMatrix4fv(app->wateruWorldMatrix, 1, GL_FALSE, &model[0][0]);
-	glUniform1f(app->wateruMoveFactor, 0.0f); // TODO: Change by app->moveFactor
+	glUniform1f(app->wateruMoveFactor, app->moveFactor); // TODO: Change by app->moveFactor
 	
 	if(app->mode == Mode::DEFERRED)
 		glUniform1i(app->wateruRTT, ConvertStringToTextureType(app->currentRenderTarget));

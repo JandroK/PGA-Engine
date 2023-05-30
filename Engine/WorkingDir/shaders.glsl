@@ -445,7 +445,7 @@ void main(void)
 
 	clipSpace = projectionMatrix * worldViewMatrix * vec4(aPosition, 1.0);
 	gl_Position = clipSpace;
-	textureCoords = mod(vec2(aPosition.x / 2.0 + 0.5, aPosition.z / 2.0 + 0.5), 0.2) * 1.0/0.2;
+	textureCoords = vec2(aPosition.x / 2.0 + 0.5, aPosition.z / 2.0 + 0.5);
 }
 
 #elif defined(FRAGMENT) ///////////////////////////////////////////////

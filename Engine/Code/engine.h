@@ -387,7 +387,7 @@ struct App
     // Water
     Transform waterTransform;
     float moveFactor = 0.0f;
-    float waveSpeed = 0.03f;
+    float waveSpeed = 0.005f;
 };
 
 void Init(App* app);
