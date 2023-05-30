@@ -2,7 +2,7 @@
 
 This is a Advanced Graphics Programming Engine in deferred mode for render geometry and lighting.
 
-![Image](Engine/Screenshots/main_scene.png)
+[![Watch the video](Engine/Screenshots/PGA-Engine_Logo.png)](https://youtu.be/UZpWSmCPIFA)
 
 ## Features
 
@@ -13,6 +13,8 @@ This is a Advanced Graphics Programming Engine in deferred mode for render geome
     - Directional Light render as quad
     - Point Light as sphere
 - Render targets, framebuffers, and render passes
+- Skybox
+- Water effect
 
 ## Render Targets
 
@@ -28,3 +30,6 @@ This is a Advanced Graphics Programming Engine in deferred mode for render geome
 - QE up / down camera
 - Mouse righ click to rate camera
 - Mouse wheel to zoom
+
+![Image](Engine/Screenshots/main_scene.png)
+![Image](Engine/Screenshots/final_render.png)
