@@ -697,7 +697,7 @@ void InitCamera(App* app)
 	app->camera.projection = glm::perspective(glm::radians(app->camera.FOV), app->camera.aspectRatio, app->camera.zNear, app->camera.zFar);
 	app->camera.view = glm::lookAt(app->camera.position, app->camera.position + app->camera.front, app->camera.up);
 
-	app->camera.speed = 15.0f;
+	app->camera.speed = 20.0f;
 	app->camera.orbitSpeed = 10.0f;
 	app->camera.sensibility = 0.15f;
 	app->camera.pitch = glm::degrees(asin(app->camera.front.y));
