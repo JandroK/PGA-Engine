@@ -3,7 +3,7 @@
 This is a Advanced Graphics Programming Engine in deferred mode for render geometry and lighting.
 
 Click to be redirected to teaser:
-[![Watch the video](Engine/Screenshots/PGA-Engine_Logo.png)](https://youtu.be/3__xriFC9ow)
+[![Watch the video](Engine/Screenshots/PGA-Engine_Logo.png)](https://www.youtube.com/watch?v=8U1bcyxGgaE)
 
 ## Features
 
